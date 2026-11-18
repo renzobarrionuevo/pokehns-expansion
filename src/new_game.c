@@ -1,4 +1,5 @@
 #include "global.h"
+#include "nuzlocke.h"
 #include "new_game.h"
 #include "random.h"
 #include "config/randomizer.h"
@@ -248,7 +249,7 @@ void NewGameInitData(void)
     ResetGabbyAndTy();
     ClearSecretBases();
     ClearBerryTrees();
-    SetMoney(&gSaveBlock1Ptr->money, 3000);
+    SetMoney(&gSaveBlock1Ptr->money, IsRKStyleActive() ? MAX_MONEY : 3000); // RKstyle: start with max money
     SetCoins(0);
     ResetLinkContestBoolean();
     ResetGameStats();
@@ -264,6 +265,11 @@ void NewGameInitData(void)
     gSaveBlock3Ptr->registeredItemHold = ITEM_NONE;
     ClearBag();
     NewGameInitPCItems();
+    if (IsRKStyleActive()) // RKstyle: both candies in the bag from the start (never used up)
+    {
+        AddBagItem(ITEM_RARE_CANDY, MAX_BAG_ITEM_CAPACITY);
+        AddBagItem(ITEM_MAX_CANDY, MAX_BAG_ITEM_CAPACITY);
+    }
     ClearPokeblocks();
     ClearDecorationInventories();
     InitEasyChatPhrases();

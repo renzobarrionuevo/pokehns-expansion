@@ -6116,6 +6116,14 @@ bool8 PokemonUseItemEffects(struct Pokemon *mon, enum Item item, u8 partyIndex, 
                 {
                     dataUnsigned = gExperienceTables[gSpeciesInfo[GetMonData(mon, MON_DATA_SPECIES)].growthRate][GetMonData(mon, MON_DATA_LEVEL) + 1];
                 }
+                else if (param == EXP_TO_LEVEL_CAP) // RKstyle Max Candy: straight to the level cap
+                {
+                    u16 species = GetMonData(mon, MON_DATA_SPECIES);
+                    u32 capExp = gExperienceTables[gSpeciesInfo[species].growthRate][GetCurrentLevelCap()];
+
+                    if (capExp > GetMonData(mon, MON_DATA_EXP))
+                        dataUnsigned = capExp;
+                }
                 else if (param - 1 < ARRAY_COUNT(sExpCandyExperienceTable)) // EXP Candies
                 {
                     u16 species = GetMonData(mon, MON_DATA_SPECIES);

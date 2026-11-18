@@ -1080,6 +1080,7 @@ enum __attribute__((packed)) Item
     ITEM_UNUSED_BERRY_2,
     ITEM_UNUSED_BERRY_3,
     ITEM_AZURE_FLUTE,
+    ITEM_MAX_CANDY, // RKstyle: raises a Pokemon straight to the current level cap
 
     ITEMS_COUNT,
     ITEM_FIELD_ARROW = ITEMS_COUNT,
@@ -1145,6 +1146,7 @@ enum __attribute__((packed)) Item
 #define EXP_3000  3
 #define EXP_10000 4
 #define EXP_30000 5
+#define EXP_TO_LEVEL_CAP 6 // RKstyle Max Candy: as much Exp. as needed to reach the level cap
 
 // Item type IDs (used to determine the exit callback)
 enum ItemType

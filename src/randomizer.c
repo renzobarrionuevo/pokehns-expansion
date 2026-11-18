@@ -537,6 +537,24 @@ void ObtainItemRandomize_NativeCall(struct ScriptContext *ctx)
     }
 }
 
+// RKstyle: VAR_RESULT = TRUE if the save is an RKstyle game
+void RKStyle_IsActive_NativeCall(struct ScriptContext *ctx)
+{
+    gSpecialVar_Result = gSaveBlock3Ptr->challengeSettings.tx_Nuzlocke_RKStyle;
+}
+
+// RKstyle: VAR_0x8002 = a truly random item from the randomizer's item whitelist
+void RKStyle_RandomItem_NativeCall(struct ScriptContext *ctx)
+{
+    u16 result;
+
+    do {
+        result = sRandomizerItemWhitelist[Random() % ITEM_WHITELIST_SIZE];
+    } while (!ShouldRandomizeItem(result) || IsItemTMHM(result));
+
+    gSpecialVar_0x8002 = result;
+}
+
 static inline bool32 IsRandomizerLegendary(u16 species)
 {
     return gSpeciesInfo[species].isRestrictedLegendary

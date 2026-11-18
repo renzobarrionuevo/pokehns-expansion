@@ -16142,6 +16142,25 @@ const struct ItemInfo gItemsInfo[] =
         .iconPalette = gItemIconPalette_QuestionMark,
     },
 
+    [ITEM_MAX_CANDY] =
+    {
+        .name = ITEM_NAME("MAX CANDY"),
+        .pluralName = ITEM_PLURAL_NAME("Max Candies"),
+        .price = 0,
+        .holdEffectParam = EXP_TO_LEVEL_CAP,
+        .description = COMPOUND_STRING(
+            "Raises a Pokémon\n"
+            "up to the current\n"
+            "level cap."),
+        .pocket = POCKET_MEDICINE,
+        .sortType = ITEM_TYPE_LEVEL_UP_ITEM,
+        .type = ITEM_USE_PARTY_MENU,
+        .fieldUseFunc = ItemUseOutOfBattle_RareCandy,
+        .effect = gItemEffect_RareCandy,
+        .flingPower = 30,
+        .iconPic = gItemIcon_RareCandy,
+        .iconPalette = gItemIconPalette_RareCandy,
+    },
     [ITEM_INFINITE_RARE_CANDIES] =
     {
         .name = ITEM_NAME("RARECANDY BOX"),
