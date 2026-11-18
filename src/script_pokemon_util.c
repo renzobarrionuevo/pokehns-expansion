@@ -55,6 +55,21 @@ void HealPlayerParty(void)
         FlagSet(B_FLAG_TERA_ORB_CHARGED);
 }
 
+// RKstyle: same as a Pokemon Center heal for the party, but fainted Pokemon are left untouched.
+void HealPlayerPartyExceptFainted(void)
+{
+    u32 i;
+
+    for (i = 0; i < PARTY_SIZE; i++)
+    {
+        if (!GetMonData(&gPlayerParty[i], MON_DATA_SANITY_HAS_SPECIES)
+         || GetMonData(&gPlayerParty[i], MON_DATA_IS_EGG)
+         || GetMonData(&gPlayerParty[i], MON_DATA_HP) == 0)
+            continue;
+        HealPokemon(&gPlayerParty[i]);
+    }
+}
+
 static bool8 IsBoxMonDead(u8 boxId, u8 boxPosition)
 {
     struct Pokemon tempMon;

@@ -3,6 +3,7 @@
 #include "battle_pike.h"
 #include "battle_pyramid.h"
 #include "event_data.h"
+#include "nuzlocke.h"
 #include "fieldmap.h"
 #include "fishing.h"
 #include "follower_npc.h"
@@ -779,6 +780,20 @@ static bool8 AreLegendariesInSootopolisPreventingEncounters(void)
     return FlagGet(FLAG_LEGENDARIES_IN_SOOTOPOLIS);
 }
 
+// RKstyle: automatic repel. Once a Pokemon has been caught in a zone, no more wild
+// Pokemon appear there by any means (walking, surfing, fishing, Rock Smash, Sweet Scent).
+// Also closed everywhere until the player has been given the first balls.
+bool32 IsRKStyleZoneClosed(void)
+{
+    if (!IsRKStyleActive())
+        return FALSE;
+    if (!FlagGet(FLAG_RECEIVED_FIRST_BALLS))
+        return TRUE;
+    if (IsNuzlockeCaptureSuspended()) // Safari Zone / Bug Contest
+        return FALSE;
+    return IsNuzlockeActive() && NuzlockeFlagGet(NuzlockeGetCurrentRegionMapSectionId());
+}
+
 bool8 StandardWildEncounter(u16 curMetatileBehavior, u16 prevMetatileBehavior)
 {
     u32 headerId;
@@ -786,6 +801,9 @@ bool8 StandardWildEncounter(u16 curMetatileBehavior, u16 prevMetatileBehavior)
     struct Roamer *roamer;
 
     if (sWildEncountersDisabled == TRUE)
+        return FALSE;
+
+    if (IsRKStyleZoneClosed())
         return FALSE;
 
     headerId = GetCurrentMapWildMonHeaderId();
@@ -930,6 +948,9 @@ void RockSmashWildEncounter(void)
     u32 headerId = GetCurrentMapWildMonHeaderId();
     enum TimeOfDay timeOfDay;
 
+    if (IsRKStyleZoneClosed())
+        headerId = HEADER_NONE;
+
     if (headerId != HEADER_NONE)
     {
         timeOfDay = GetTimeOfDayForEncounters(headerId, WILD_AREA_ROCKS);
@@ -972,6 +993,9 @@ bool8 SweetScentWildEncounter(void)
     s16 x, y;
     u32 headerId;
     enum TimeOfDay timeOfDay;
+
+    if (IsRKStyleZoneClosed())
+        return FALSE;
 
     PlayerGetDestCoords(&x, &y);
     headerId = GetCurrentMapWildMonHeaderId();
@@ -1053,6 +1077,9 @@ bool8 DoesCurrentMapHaveFishingMons(void)
 {
     u32 headerId = GetCurrentMapWildMonHeaderId();
     enum TimeOfDay timeOfDay = GetTimeOfDayForEncounters(headerId, WILD_AREA_FISHING);
+
+    if (IsRKStyleZoneClosed())
+        return FALSE;
 
     if (headerId != HEADER_NONE && gWildMonHeaders[headerId].encounterTypes[timeOfDay].fishingMonsInfo != NULL)
         return TRUE;

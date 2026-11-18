@@ -1,4 +1,5 @@
 #include "global.h"
+#include "nuzlocke.h"
 #include "main.h"
 #include "event_object_movement.h"
 #include "fieldmap.h"
@@ -270,6 +271,9 @@ static bool32 Fishing_CheckForBite(struct Task *task)
 
     if (firstMonHasSuctionOrSticky && I_FISHING_STICKY_BOOST < GEN_4)
         bite = RandomPercentage(RNG_FISHING_GEN3_STICKY, FISHING_GEN3_STICKY_CHANCE);
+
+    if (IsRKStyleActive()) // RKstyle: the first cast always gets a bite
+        bite = TRUE;
 
     if (!bite)
         bite = Fishing_RollForBite(task->tFishingRod, firstMonHasSuctionOrSticky);

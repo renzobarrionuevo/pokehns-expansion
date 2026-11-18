@@ -48,6 +48,7 @@
 #include "random.h"
 #include "randomizer.h"
 #include "nuzlocke.h"
+#include "script_pokemon_util.h"
 #include "recorded_battle.h"
 #include "roamer.h"
 #include "safari_zone.h"
@@ -5937,13 +5938,34 @@ static void HandleEndTurn_FinishBattle(void)
                 // caught, so it must not burn the route's Nuzlocke encounter.
                 // The Safari Zone / Bug Contest suspend the one-encounter-per-zone
                 // rule, so a catch there must not burn the zone either.
-                if (!NuzlockeIsSpeciesClauseActive && !OneTypeChallengeCaptureBlocked
+                if (IsRKStyleActive())
+                {
+                    // RKstyle: a zone is only used up by actually catching a Pokemon there,
+                    // not by the first encounter.
+                    if (gBattleOutcome == B_OUTCOME_CAUGHT && !IsNuzlockeCaptureSuspended())
+                        NuzlockeFlagSet(NuzlockeGetCurrentRegionMapSectionId());
+                }
+                else if (!NuzlockeIsSpeciesClauseActive && !OneTypeChallengeCaptureBlocked
                  && !IsNuzlockeCaptureSuspended())
                     NuzlockeFlagSet(NuzlockeGetCurrentRegionMapSectionId());
             }
             NuzlockeIsCaptureBlocked = FALSE;
             NuzlockeIsSpeciesClauseActive = FALSE;
             OneTypeChallengeCaptureBlocked = FALSE;
+        }
+
+        // RKstyle: after every battle the surviving party Pokemon are fully healed
+        // (HP, PP and status), like a Pokemon Center. Fainted Pokemon are never revived.
+        if (IsRKStyleActive())
+        {
+            if (!(gBattleTypeFlags & (BATTLE_TYPE_LINK
+                                        | BATTLE_TYPE_LINK_IN_BATTLE
+                                        | BATTLE_TYPE_TOWER_LINK_MULTI
+                                        | BATTLE_TYPE_RECORDED_LINK
+                                        | BATTLE_TYPE_CATCH_TUTORIAL
+                                        | BATTLE_TYPE_FRONTIER
+                                        | BATTLE_TYPE_TRAINER_HILL)))
+                HealPlayerPartyExceptFainted();
         }
 
         BeginFastPaletteFade(3);
