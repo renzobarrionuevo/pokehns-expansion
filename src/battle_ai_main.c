@@ -1,4 +1,5 @@
 #include "global.h"
+#include "nuzlocke.h"
 #include "main.h"
 #include "malloc.h"
 #include "battle.h"
@@ -228,7 +229,7 @@ static u64 GetAiFlags(u16 trainerId, enum BattlerId battler)
         else if (gBattleTypeFlags & BATTLE_TYPE_SAFARI)
             flags = AI_FLAG_SAFARI;
         else if (gBattleTypeFlags & BATTLE_TYPE_ROAMER)
-            flags = AI_FLAG_ROAMING;
+            flags = IsRKStyleActive() ? AI_FLAG_CHECK_BAD_MOVE : AI_FLAG_ROAMING; // RKstyle: roamers fight instead of fleeing
         else if (gBattleTypeFlags & BATTLE_TYPE_FIRST_BATTLE)
             flags = AI_FLAG_FIRST_BATTLE;
         else if (gBattleTypeFlags & BATTLE_TYPE_FACTORY)

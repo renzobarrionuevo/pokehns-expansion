@@ -4247,6 +4247,10 @@ u8 IsRunningFromBattleImpossible(enum BattlerId battler)
         return BATTLE_RUN_FORBIDDEN;
     }
 
+    // RKstyle: wild Pokemon can never flee (e.g. with Teleport)
+    if (IsRKStyleActive() && !(gBattleTypeFlags & BATTLE_TYPE_TRAINER) && !IsOnPlayerSide(battler))
+        return BATTLE_RUN_FORBIDDEN;
+
     if (gBattleMons[battler].item == ITEM_ENIGMA_BERRY_E_READER)
         holdEffect = gEnigmaBerries[battler].holdEffect;
     else

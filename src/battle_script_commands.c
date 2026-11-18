@@ -8143,6 +8143,13 @@ static void Cmd_forcerandomswitch(void)
 {
     CMD_ARGS(const u8 *failInstr);
 
+    // RKstyle: a wild Pokemon can't end the battle with Roar / Whirlwind
+    if (IsRKStyleActive() && !(gBattleTypeFlags & BATTLE_TYPE_TRAINER) && !IsOnPlayerSide(gBattlerAttacker))
+    {
+        gBattlescriptCurrInstr = cmd->failInstr;
+        return;
+    }
+
     s32 battler1PartyId = 0;
     s32 battler2PartyId = 0;
 
@@ -11013,6 +11020,23 @@ static void Cmd_handleballthrow(void)
     {
         gBallToDisplay = gLastThrownBall = gLastUsedItem;
         u32 odds = ComputeCaptureOdds(gBattlerTarget, gBattlerAttacker);
+
+        // RKstyle: every failed throw in this battle doubles the odds of the next one
+        if (IsRKStyleActive() && odds != (u32)CAPTURE_GUARANTEED)
+        {
+            u32 shift = gBattleStruct->rkStyleFailedBallThrows;
+
+            if (shift > 8)
+                shift = 8;
+            if (odds == 0)
+                odds = 1;
+            odds <<= shift;
+            if (odds > 255)
+                odds = 255;
+            if (gBattleStruct->rkStyleFailedBallThrows < 255)
+                gBattleStruct->rkStyleFailedBallThrows++;
+        }
+
         if (gTestRunnerEnabled)
             TestRunner_Battle_RecordCatchChance(odds);
 

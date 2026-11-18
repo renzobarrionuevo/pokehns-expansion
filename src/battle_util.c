@@ -1,4 +1,5 @@
 #include "global.h"
+#include "nuzlocke.h"
 #include "battle.h"
 #include "battle_anim.h"
 #include "battle_arena.h"
@@ -683,9 +684,11 @@ void HandleAction_Run(void)
         }
         else
         {
-            if (GetBattlerHoldEffect(gBattlerAttacker) != HOLD_EFFECT_CAN_ALWAYS_RUN
-             && GetBattlerAbility(gBattlerAttacker) != ABILITY_RUN_AWAY
-             && !CanBattlerEscape(gBattlerAttacker))
+            // RKstyle: wild Pokemon (roamers, Safari Zone) can never flee
+            if (IsRKStyleActive()
+             || (GetBattlerHoldEffect(gBattlerAttacker) != HOLD_EFFECT_CAN_ALWAYS_RUN
+              && GetBattlerAbility(gBattlerAttacker) != ABILITY_RUN_AWAY
+              && !CanBattlerEscape(gBattlerAttacker)))
             {
                 gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_ATTACKER_CANT_ESCAPE;
                 gBattlescriptCurrInstr = BattleScript_PrintFailedToRunString;
