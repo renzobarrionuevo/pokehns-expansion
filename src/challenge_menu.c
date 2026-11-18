@@ -346,7 +346,14 @@ static const u8 *const sChoices_OnOff[] = {
 static const u8 *const sChoices_Gamemode[] = {
     COMPOUND_STRING("RECOMMENDED"),
     COMPOUND_STRING("CUSTOM"),
+    COMPOUND_STRING("RK"),
 };
+
+// Values of the GAMEMODE row and of the NUZLOCKE row
+#define GAMEMODE_RECOMMENDED 0
+#define GAMEMODE_CUSTOM      1
+#define GAMEMODE_RKSTYLE     2
+#define NUZLOCKE_SEL_RKSTYLE 4
 
 static const u8 *const sChoices_OriginalModern[] = {
     COMPOUND_STRING("ORIGINAL"),
@@ -365,6 +372,7 @@ static const u8 sText_TopBar_Cancel[] = _("{B_BUTTON}CANCEL");
 static const u8 *const sDesc_Gamemode[] = {
     COMPOUND_STRING("Recommended settings."),
     COMPOUND_STRING("Choose your own rules."),
+    COMPOUND_STRING("RKSTYLE: every page is preset.\nPick NEXT below to start right away."),
 };
 static const u8 *const sDesc_ModernMoves[] = {
     COMPOUND_STRING("Generation 3 LEARNSETS and EGG\n MOVES with no changes."),
@@ -426,7 +434,7 @@ static const struct ChallengeMenuItem sTabItems_Mode[] = {
     [ITEM_MODE_GAMEMODE] = {
         .name         = COMPOUND_STRING("GAMEMODE"),
         .descriptions = sDesc_Gamemode,
-        .numChoices   = 2,
+        .numChoices   = 3,
         .choiceNames  = sChoices_Gamemode,
     },
     [ITEM_MODE_MODERN_MOVES] = {
@@ -553,6 +561,7 @@ static const u8 *const sChoices_Nuzlocke[] = {
     COMPOUND_STRING("EASY"),
     COMPOUND_STRING("NORMAL"),
     COMPOUND_STRING("HARD"),
+    COMPOUND_STRING("RK"),
 };
 
 static const u8 *const sChoices_CemeteryRelease[] = {
@@ -892,6 +901,7 @@ static const u8 *const sDesc_Nuzlocke[] = {
     COMPOUND_STRING("Fainted {PKMN} can't be used anymore!\nNo more rules are enforced."),
     COMPOUND_STRING("One catch per route! Fainted {PKMN}\ncan't be used anymore."),
     COMPOUND_STRING("Same rules as NORMAL but also\ndeletes SAVE on battle loss!"),
+    COMPOUND_STRING("RKSTYLE: one new {PKMN} per zone,\nfull heal after every battle."),
 };
 static const u8 *const sDesc_SpeciesClause[] = {
     COMPOUND_STRING("Only not prior caught {PKMN} count\nas first encounter. RECOMMENDED!"),
@@ -921,7 +931,7 @@ static const struct ChallengeMenuItem sTabItems_Nuzlocke[] = {
     [ITEM_NUZLOCKE_NUZLOCKE] = {
         .name         = COMPOUND_STRING("NUZLOCKE"),
         .descriptions = sDesc_Nuzlocke,
-        .numChoices   = 4,
+        .numChoices   = 5,
         .choiceNames  = sChoices_Nuzlocke,
     },
     [ITEM_NUZLOCKE_SPECIES_CLAUSE] = {
@@ -1531,12 +1541,18 @@ static void ChallengeMenu_ItemPrintFunc(u8 windowId, u32 itemId, u8 y)
     switch (items[itemId].numChoices)
     {
     case 2:
-    {
-        int leftX = (sMenu->currentTab == TAB_MODE && itemId == ITEM_MODE_GAMEMODE) ? 74 : 104;
-        DrawChoices_Two(items[itemId].choiceNames, sel, y, active, leftX);
+        DrawChoices_Two(items[itemId].choiceNames, sel, y, active, 104);
         break;
-    }
     case 3:
+        if (sMenu->currentTab == TAB_MODE && itemId == ITEM_MODE_GAMEMODE)
+        {
+            // Only two choices fit on this row: RECOMMENDED + CUSTOM, then CUSTOM + RK
+            if (sel == GAMEMODE_RECOMMENDED)
+                DrawChoices_Two(items[itemId].choiceNames, 0, y, active, 74);
+            else
+                DrawChoices_Two(&items[itemId].choiceNames[1], sel - 1, y, active, 104);
+            break;
+        }
         DrawChoices_Three(items[itemId].choiceNames, sel, y, active);
         break;
     case 4:
@@ -1769,6 +1785,71 @@ static void SwitchTab(u8 taskId, s8 direction)
 // Input: cycle selection left/right
 // =============================================================================
 
+// RKstyle presets. Applied once, when RK is picked on the GAMEMODE or NUZLOCKE row,
+// so every option can still be changed by hand afterwards.
+static void ApplyRKStylePresets(void)
+{
+    // Mode: same as RECOMMENDED (every row ON), locked like RECOMMENDED
+    ApplyRecommendedPresets();
+    *GetSelectionPtr(TAB_MODE, ITEM_MODE_GAMEMODE)                   = GAMEMODE_RKSTYLE;
+
+    // Features
+    *GetSelectionPtr(TAB_FEATURES, ITEM_FEATURES_RTC_TYPE)           = 1; // fake RTC (1h real = 1 day in-game)
+    *GetSelectionPtr(TAB_FEATURES, ITEM_FEATURES_SHINY_CHANCE)       = 4; // 1/512
+    *GetSelectionPtr(TAB_FEATURES, ITEM_FEATURES_SHINY_COLOR)        = 0; // original shiny palettes
+    *GetSelectionPtr(TAB_FEATURES, ITEM_FEATURES_ITEM_DROP)          = 0; // wild item drop OFF
+    *GetSelectionPtr(TAB_FEATURES, ITEM_FEATURES_FRONTIER_BANS)      = 0; // legendaries banned in the Frontier
+
+    // Randomizer
+    *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_OFF_ON)             = 1; // ON
+    *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_STARTER)            = 1;
+    *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_WILD_PKMN)          = 1;
+    *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_MAP_BASED)          = 1; // wild tables consistent per map
+    *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_TRAINER)            = 1;
+    *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_STATIC)             = 1;
+    *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_SIMILAR)            = 0; // 0 = replacements of similar evo stage
+    *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_LEGENDARIES)        = 1;
+    *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_GEN_SCOPE)          = 0; // GEN 1-9
+    *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_TYPE)               = 0;
+    *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_MOVES)              = 1;
+    *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_ABILITIES)          = 1;
+    *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_EVOLUTIONS)         = 0; // evolution lines unchanged
+    *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_EVO_METHODS)        = 0;
+    *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_TYPE_EFFEC)         = 0;
+    *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_ITEMS)              = 1;
+    *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_CHAOS)              = 0;
+
+    // Nuzlocke (0 = ON, 1 = OFF for the clause rows)
+    *GetSelectionPtr(TAB_NUZLOCKE, ITEM_NUZLOCKE_NUZLOCKE)           = NUZLOCKE_SEL_RKSTYLE;
+    *GetSelectionPtr(TAB_NUZLOCKE, ITEM_NUZLOCKE_SPECIES_CLAUSE)     = 0; // can't catch an evolution line twice
+    *GetSelectionPtr(TAB_NUZLOCKE, ITEM_NUZLOCKE_SHINY_CLAUSE)       = 0;
+    *GetSelectionPtr(TAB_NUZLOCKE, ITEM_NUZLOCKE_NICKNAMING)         = 0; // forced nicknames
+    *GetSelectionPtr(TAB_NUZLOCKE, ITEM_NUZLOCKE_DELETION)           = 0; // fainted Pokemon kept in the PC (last box)
+    *GetSelectionPtr(TAB_NUZLOCKE, ITEM_NUZLOCKE_RARE_CANDY)         = 1; // no PC candy box: RK puts the candies in the bag
+
+    // Difficulty
+    *GetSelectionPtr(TAB_DIFFICULTY, ITEM_DIFFICULTY_PARTY_LIMIT)    = 0; // 6
+    *GetSelectionPtr(TAB_DIFFICULTY, ITEM_DIFFICULTY_LEVEL_CAP)      = 1; // next gym's highest level
+    *GetSelectionPtr(TAB_DIFFICULTY, ITEM_DIFFICULTY_EXP_MULTIPLIER) = 3; // x0: levels come from candies
+    *GetSelectionPtr(TAB_DIFFICULTY, ITEM_DIFFICULTY_ITEM_PLAYER)    = 1; // no battle items (Poke Balls allowed)
+    *GetSelectionPtr(TAB_DIFFICULTY, ITEM_DIFFICULTY_ITEM_TRAINER)   = 1; // trainers neither
+    *GetSelectionPtr(TAB_DIFFICULTY, ITEM_DIFFICULTY_MAX_PARTY_IVS)  = 0;
+    *GetSelectionPtr(TAB_DIFFICULTY, ITEM_DIFFICULTY_SCALING_IVS)    = 0;
+    *GetSelectionPtr(TAB_DIFFICULTY, ITEM_DIFFICULTY_NO_EVS)         = 0;
+    *GetSelectionPtr(TAB_DIFFICULTY, ITEM_DIFFICULTY_SCALING_EVS)    = 0;
+    *GetSelectionPtr(TAB_DIFFICULTY, ITEM_DIFFICULTY_LESS_ESCAPES)   = 0;
+    *GetSelectionPtr(TAB_DIFFICULTY, ITEM_DIFFICULTY_ESCAPE_ROPE_DIG)= 0;
+
+    // Challenges: everything at its regular value
+    *GetSelectionPtr(TAB_CHALLENGES, ITEM_CHALLENGES_POKECENTER)     = 0;
+    *GetSelectionPtr(TAB_CHALLENGES, ITEM_CHALLENGES_EXPENSIVE)      = 0;
+    *GetSelectionPtr(TAB_CHALLENGES, ITEM_CHALLENGES_EVO_LIMIT)      = 0;
+    *GetSelectionPtr(TAB_CHALLENGES, ITEM_CHALLENGES_ONE_TYPE)       = 19; // OFF
+    *GetSelectionPtr(TAB_CHALLENGES, ITEM_CHALLENGES_BST_EQUALIZER)  = 0;
+    *GetSelectionPtr(TAB_CHALLENGES, ITEM_CHALLENGES_MIRROR)         = 0;
+    *GetSelectionPtr(TAB_CHALLENGES, ITEM_CHALLENGES_MIRROR_THIEF)   = 0;
+}
+
 static void ProcessLeftRight(void)
 {
     u16 scrollOffset, selectedRow;
@@ -1815,11 +1896,41 @@ static void ProcessLeftRight(void)
         return;
     }
 
+    // RKstyle can only be entered or left while setting up a new game
+    if (*sel != prev && !sIsInitialSetup
+        && ((sMenu->currentTab == TAB_MODE && itemIndex == ITEM_MODE_GAMEMODE
+             && (*sel == GAMEMODE_RKSTYLE || prev == GAMEMODE_RKSTYLE))
+         || (sMenu->currentTab == TAB_NUZLOCKE && itemIndex == ITEM_NUZLOCKE_NUZLOCKE
+             && (*sel == NUZLOCKE_SEL_RKSTYLE || prev == NUZLOCKE_SEL_RKSTYLE))))
+    {
+        *sel = prev;
+        PlaySE(SE_FAILURE);
+        return;
+    }
+
     if (*sel != prev)
     {
         // When GAMEMODE changes to RECOMMENDED, apply presets
         if (sMenu->currentTab == TAB_MODE && itemIndex == ITEM_MODE_GAMEMODE && *sel == 0)
             ApplyRecommendedPresets();
+
+        // RKstyle: the RK value of GAMEMODE and of NUZLOCKE is one switch
+        if (sMenu->currentTab == TAB_MODE && itemIndex == ITEM_MODE_GAMEMODE)
+        {
+            if (*sel == GAMEMODE_RKSTYLE)
+                ApplyRKStylePresets();
+            else if (prev == GAMEMODE_RKSTYLE
+                  && *GetSelectionPtr(TAB_NUZLOCKE, ITEM_NUZLOCKE_NUZLOCKE) == NUZLOCKE_SEL_RKSTYLE)
+                *GetSelectionPtr(TAB_NUZLOCKE, ITEM_NUZLOCKE_NUZLOCKE) = 0; // OFF
+        }
+        if (sMenu->currentTab == TAB_NUZLOCKE && itemIndex == ITEM_NUZLOCKE_NUZLOCKE)
+        {
+            if (*sel == NUZLOCKE_SEL_RKSTYLE)
+                ApplyRKStylePresets();
+            else if (prev == NUZLOCKE_SEL_RKSTYLE
+                  && *GetSelectionPtr(TAB_MODE, ITEM_MODE_GAMEMODE) == GAMEMODE_RKSTYLE)
+                *GetSelectionPtr(TAB_MODE, ITEM_MODE_GAMEMODE) = GAMEMODE_CUSTOM;
+        }
 
         // Nuzlocke OFF or EASY — reset sub-options to defaults
         if (sMenu->currentTab == TAB_NUZLOCKE && itemIndex == ITEM_NUZLOCKE_NUZLOCKE
@@ -1893,6 +2004,14 @@ static void Task_ProcessInput(u8 taskId)
     }
 
     if (sMenu->currentTab == TAB_CHALLENGES && (u32)input == ITEM_CHALLENGES_SAVE)
+    {
+        gTasks[taskId].func = Task_Save;
+        return;
+    }
+
+    // RKstyle: NEXT on the first page skips the other pages and goes to the confirm prompt
+    if (sIsInitialSetup && sMenu->currentTab == TAB_MODE && (u32)input == ITEM_MODE_NEXT
+        && *GetSelectionPtr(TAB_MODE, ITEM_MODE_GAMEMODE) == GAMEMODE_RKSTYLE)
     {
         gTasks[taskId].func = Task_Save;
         return;
@@ -2030,6 +2149,7 @@ static void Task_ConfirmSaveYes(u8 taskId)
         cs->tx_Challenges_Nuzlocke         = (nuzSel >= 2) ? 1 : 0;
         cs->tx_Nuzlocke_EasyMode           = (nuzSel == 1) ? 1 : 0;
         cs->tx_Challenges_NuzlockeHardcore = (nuzSel == 3) ? 1 : 0;
+        cs->tx_Nuzlocke_RKStyle            = (nuzSel == NUZLOCKE_SEL_RKSTYLE) ? 1 : 0;
 
         if (nuzSel == 0) // OFF — clear sub-options
         {
@@ -2211,6 +2331,8 @@ void CB2_InitChallengeMenu(void)
                 *GetSelectionPtr(TAB_MODE, ITEM_MODE_GAMEMODE) = 0; // RECOMMENDED
             else
                 *GetSelectionPtr(TAB_MODE, ITEM_MODE_GAMEMODE) = 1; // CUSTOM
+            if (cs->tx_Nuzlocke_RKStyle)
+                *GetSelectionPtr(TAB_MODE, ITEM_MODE_GAMEMODE) = GAMEMODE_RKSTYLE;
 
             // Features tab
             *GetSelectionPtr(TAB_FEATURES, ITEM_FEATURES_RTC_TYPE)     = cs->tx_Features_RTCType;
@@ -2245,7 +2367,9 @@ void CB2_InitChallengeMenu(void)
             *GetSelectionPtr(TAB_RANDOMIZER, ITEM_RANDOM_CHAOS)       = cs->tx_Random_Chaos;
 
             // Nuzlocke tab — 3 bits → 4 selection states (matches HnS encoding)
-            if (cs->tx_Challenges_Nuzlocke && cs->tx_Challenges_NuzlockeHardcore)
+            if (cs->tx_Challenges_Nuzlocke && cs->tx_Nuzlocke_RKStyle)
+                *GetSelectionPtr(TAB_NUZLOCKE, ITEM_NUZLOCKE_NUZLOCKE) = NUZLOCKE_SEL_RKSTYLE;
+            else if (cs->tx_Challenges_Nuzlocke && cs->tx_Challenges_NuzlockeHardcore)
                 *GetSelectionPtr(TAB_NUZLOCKE, ITEM_NUZLOCKE_NUZLOCKE) = 3; // HARD
             else if (cs->tx_Challenges_Nuzlocke)
                 *GetSelectionPtr(TAB_NUZLOCKE, ITEM_NUZLOCKE_NUZLOCKE) = 2; // NORMAL

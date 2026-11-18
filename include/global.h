@@ -319,6 +319,7 @@ struct ChallengeSettings
     u8 tx_Nuzlocke_Deletion:1;
     u8 tx_Nuzlocke_EasyMode:1;
     u8 tx_Nuzlocke_RareCandy:1;
+    u8 tx_Nuzlocke_RKStyle:1; // RKstyle preset mode
     u8 nuzlockeEncounterFlags[16];
     // Mode / Features
     u8 tx_Mode_InfiniteTMs:1;

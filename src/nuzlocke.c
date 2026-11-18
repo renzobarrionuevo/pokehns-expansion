@@ -301,6 +301,12 @@ bool8 IsNuzlockeEasyActive(void)
     return cs->tx_Nuzlocke_EasyMode && !cs->tx_Challenges_Nuzlocke;
 }
 
+// RKstyle: preset game mode built on top of the NORMAL Nuzlocke rules
+bool8 IsRKStyleActive(void)
+{
+    return gSaveBlock3Ptr->challengeSettings.tx_Nuzlocke_RKStyle;
+}
+
 bool8 IsNuzlockeNicknamingActive(void)
 {
     struct ChallengeSettings *cs = &gSaveBlock3Ptr->challengeSettings;
