@@ -380,6 +380,7 @@ static bool8 CheckSilphScopeInPokemonTower(u16 mapGroup, u16 mapNum)
 
 void BattleSetup_StartWildBattle(void)
 {
+    gRKStyleFixedEncounter = FALSE; // regular wild encounter
     SetNuzlockeChecks();
     if (GetSafariZoneFlag())
         DoSafariBattle();

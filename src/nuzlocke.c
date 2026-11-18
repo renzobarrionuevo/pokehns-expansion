@@ -273,6 +273,9 @@ bool8 IsNuzlockeCaptureSuspended(void)
     return FlagGet(FLAG_SYS_SAFARI_MODE) || GetBugContestFlag();
 }
 
+// RKstyle: TRUE while the upcoming/current wild battle is a fixed (scripted) encounter
+EWRAM_DATA bool8 gRKStyleFixedEncounter = FALSE;
+
 bool8 IsNuzlockeActive(void)
 {
     struct ChallengeSettings *cs = &gSaveBlock3Ptr->challengeSettings;
@@ -484,7 +487,10 @@ void SetNuzlockeChecks(void)
         NuzlockeIsCaptureBlocked = NuzlockeFlagGet(NuzlockeGetCurrentRegionMapSectionId());
 
         if ((IsMonShiny(&gEnemyParty[0]) && gSaveBlock3Ptr->challengeSettings.tx_Nuzlocke_ShinyClause)
-            || (GetMonData(&gEnemyParty[0], MON_DATA_MODERN_FATEFUL_ENCOUNTER, NULL)))
+            || (GetMonData(&gEnemyParty[0], MON_DATA_MODERN_FATEFUL_ENCOUNTER, NULL))
+            // RKstyle: every fixed encounter (legendaries, Snorlax, Sudowoodo...) can always
+            // be caught, whatever the zone or the species clause say
+            || (IsRKStyleActive() && gRKStyleFixedEncounter))
         {
             NuzlockeIsCaptureBlocked = FALSE;
             NuzlockeIsSpeciesClauseActive = FALSE;

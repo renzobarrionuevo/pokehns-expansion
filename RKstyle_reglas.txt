@@ -191,8 +191,19 @@ FIN DEL NUZLOCKE
          3        25            8        56
          4        31
 
-      Despues de vencer a la Liga Pokemon ......... 70
-      Despues de vencer a la Liga de Kanto ........ 100 (sin tope)
+      Despues de vencer a la Liga de Johto ........ 70
+      Despues de vencer a la Liga de Kanto ........ 80
+      ... si Red ya usa su equipo mas fuerte ...... 87
+      Despues de vencer a Red ..................... sin tope
+
+    Los dos topes despues de Kanto son propios de RK y estan pensados
+    para pelear parejo contra Red y las revanchas del postgame:
+      - 80: el equipo normal de Red tiene niveles 77-80 (mas su Pikachu
+        al 93), y las revanchas de lideres, Liga y Steven van de 69 a 79.
+      - 87: cuando avanza cierta historia del postgame (Nueva Sinjoh),
+        Red pasa a su equipo fuerte: niveles 85-87 y Pikachu al 95.
+    En ambos casos el Pikachu de Red queda por encima del tope a
+    proposito: es su as.
 
     - Vale para los caramelos. Los combates en RK no dan experiencia
       (pagina 5, Exp Multiplier x0), asi que los caramelos son la unica
@@ -275,6 +286,113 @@ FIN DEL NUZLOCKE
     Si en las opciones del juego tienes configurado que L funcione como
     A, L elegira el ataque en vez de mostrar la descripcion; en ese
     caso usa START.
+
+3.14 Opciones de comodidad al empezar
+
+    El menu OPTIONS del juego (el de pausa) no es parte de los desafios
+    y se puede cambiar en cualquier momento. Al crear una partida RK,
+    dos de sus opciones arrancan distintas al valor normal:
+
+      Text Speed ...... MID   (normal: FAST)
+      New Battle UI ... GEN 4 (normal: GEN 3) - interfaz de combate
+                              moderna, en la pagina BATTLE.
+
+    El resto del menu OPTIONS queda con sus valores normales.
+
+3.15 Ataques que aprende cada Pokemon
+
+    En RK (con "Moves" del randomizer activado, como viene por defecto)
+    cada especie tiene su propia lista de 24 ataques, al azar pero con
+    reglas. Reemplaza por completo la lista normal del juego.
+
+    - Todas las especies aprenden en los MISMOS 24 niveles:
+        1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34,
+        38, 41, 44, 47, 50, 53, 56, 59, 62, 65, 68, 71
+    - Reparto: siempre 8 STAB + 8 ataques + 8 de utilidad, pero en
+      orden al azar. El primero (nivel 1) es siempre un STAB o un
+      ataque; los otros 23 vienen mezclados, asi que pueden tocar varios
+      ataques seguidos o varias utilidades seguidas.
+        STAB ...... ataque que hace dano y es del tipo del Pokemon. Si
+                    tiene dos tipos, alterna entre ambos.
+        Ataque .... ataque que hace dano y es de OTRO tipo (cobertura).
+        Utilidad .. movimiento de estado: subir estadisticas, curarse,
+                    envenenar, dormir, etc.
+    - La potencia de cada ataque se sortea con estas probabilidades, que
+      mejoran a medida que sube el nivel:
+
+                       pot. hasta 45  46-65  66-85  86-110  111 o mas
+        niveles  1-12 ....... 62%      28%     8%     1%       1%
+        niveles 13-25 ....... 32%      42%    20%     5%       1%
+        niveles 26-40 ....... 11%      34%    36%    15%       4%
+        niveles 41-55 ........ 5%      20%    38%    27%      10%
+        niveles 56-71 ........ 1%      10%    34%    36%      19%
+
+      Si para ese tipo no queda ningun ataque en la franja sorteada, se
+      usa la franja mas cercana (primero la de abajo).
+    - Siempre tiene al menos un ataque que hace dano: el del nivel 1.
+    - Ningun movimiento se repite dentro de la lista de un Pokemon.
+    - La lista es fija durante toda la partida: dos Geodude tuyos
+      aprenden lo mismo. Otra partida nueva da otras listas.
+    - Al evolucionar no cambia nada de lo ya aprendido; desde ahi sigue
+      con la lista de la nueva especie en los mismos niveles.
+    - Quedan fuera los movimientos inutiles o que solo sirven en
+      combates dobles (Salpicadura, Mano Amiga, Cura Floral, etc.).
+    - Pueden salir movimientos que solo funcionan en ciertas
+      situaciones; no se filtran uno por uno.
+    - Ya no se aprenden movimientos al evolucionar (los que el juego
+      normal ensena justo en el momento de la evolucion).
+
+3.16 Cualquier Pokemon aprende cualquier MT y MO
+
+    Todas las MT y MO se pueden ensenar a cualquier Pokemon, sin
+    importar su tipo ni su especie. (Los tutores siguen con sus reglas
+    normales.)
+
+    Para no llenar los menus, Vuelo solo aparece en el menu de un
+    Pokemon si tienes la MO de Vuelo en la mochila.
+
+3.17 Los encuentros fijos siempre se pueden capturar
+
+    Los encuentros fijos no cuentan para la regla de una captura por
+    zona. Son los Pokemon que estan quietos en el mapa y con los que
+    peleas al interactuar: los legendarios (Lugia, Ho-Oh, Mewtwo, los
+    pajaros, etc.) y tambien los no legendarios (Snorlax, Sudowoodo,
+    Lapras, Electrode, etc.).
+
+    - Aunque ya hayas capturado un Pokemon en esa zona, si interactuas
+      con el encuentro fijo, aparece y lo puedes capturar.
+    - Tampoco los bloquea la Species Clause.
+    - Capturarlo no gasta la zona: si todavia no habias capturado nada
+      ahi, sigues teniendo tu captura de esa zona.
+    - Los legendarios errantes (Raikou, Entei, etc.) tambien se pueden
+      capturar siempre (esto ya era asi en la version 2.0).
+    - El repelente automatico no afecta a estos encuentros, porque los
+      provocas tu al interactuar.
+
+    Como el randomizer de encuentros fijos esta activado, en su lugar
+    aparece otro Pokemon al azar de su mismo grupo: un legendario se
+    cambia siempre por otro LEGENDARIO, y un Pokemon normal por otro de
+    etapa evolutiva parecida.
+
+    No incluye los Pokemon que aparecen al sacudir arboles de bayas:
+    esos cuentan como encuentros normales.
+
+3.18 Lideres de gimnasio: de 4 a 6 Pokemon y sin objetos
+
+    - Todo lider de gimnasio (de Johto y de Kanto, tambien en sus
+      revanchas) usa como minimo 4 Pokemon. El maximo es 6, como
+      siempre.
+    - Los que tenian menos de 4 reciben Pokemon extra, al nivel del
+      Pokemon mas bajo de su equipo:
+        Falkner .... 2 -> 4 (los extra al nivel 8)
+        Bugsy ...... 3 -> 4 (el extra al nivel 15)
+        Whitney .... 3 -> 4 (el extra al nivel 20)
+      Como los equipos de entrenadores son al azar, los extra tambien
+      son Pokemon al azar.
+    - Igual que tu, los lideres (y todos los entrenadores) no pueden
+      usar objetos durante el combate: es la opcion "Trainer Items" de
+      la pagina 5, que RK deja en NO. Los objetos equipados en sus
+      Pokemon si funcionan, igual que los tuyos.
 
 
 --------------------------------------------------------------
@@ -366,7 +484,11 @@ solo se cumple si se desactiva "Abilities" en el randomizer.
                                        Tyranitar salvaje en la ruta 1.
                                        No tiene que ver con como
                                        evolucionan tus Pokemon.
-  Include Legendaries ....... ON       Los legendarios entran al sorteo.
+  Include Legendaries ....... ON       Sin efecto mientras "Similar" este
+                                       activado: con Similar, los
+                                       legendarios solo se reemplazan
+                                       entre si y los demas Pokemon nunca
+                                       pasan a ser legendarios.
   Gen Scope ................. GEN 1-9  El sorteo usa Pokemon de las nueve
                                        generaciones. (La otra opcion,
                                        GEN 1-3, lo limita a las familias

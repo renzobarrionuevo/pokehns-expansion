@@ -269,6 +269,10 @@ void NewGameInitData(void)
     {
         AddBagItem(ITEM_RARE_CANDY, MAX_BAG_ITEM_CAPACITY);
         AddBagItem(ITEM_MAX_CANDY, MAX_BAG_ITEM_CAPACITY);
+
+        // RKstyle comfort options (can still be changed from the OPTIONS menu)
+        gSaveBlock2Ptr->optionsTextSpeed = OPTIONS_TEXT_SPEED_MID;
+        gSaveBlock3Ptr->challengeSettings.newBattleUI = 1; // Gen IV battle UI
     }
     ClearPokeblocks();
     ClearDecorationInventories();

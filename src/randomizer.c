@@ -15,6 +15,7 @@
 #include "constants/pokedex.h"
 #include "data/randomizer/ability_whitelist.h"
 #include "move.h"
+#include "constants/moves.h"
 
 const u16 gStarterAndGiftMonTable[STARTER_AND_GIFT_MON_COUNT] =
 {
@@ -1360,3 +1361,258 @@ u16 RandomizeEvoMethod(u16 species)
 }
 
 #endif // RANDOMIZER_AVAILABLE
+
+// =============================================================================
+// RKstyle learnsets
+// Every species learns 24 moves at the same 24 levels (1 to 71):
+// 8 STAB attacks, 8 attacks of other types and 8 utility (status) moves in random
+// order (the first one is always an attack). Better attacks get likelier with the level.
+// No move is repeated in a list. Fixed per species for the whole game (seeded).
+// =============================================================================
+
+#define RK_LEARNSET_SLOTS 24
+#define RK_LEARNSET_CACHE 4
+#define RK_PICK_ATTEMPTS  3000
+
+static const u8 sRKLearnLevels[RK_LEARNSET_SLOTS] =
+{
+    1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34,
+    38, 41, 44, 47, 50, 53, 56, 59, 62, 65, 68, 71,
+};
+
+enum { RK_SLOT_STAB, RK_SLOT_ATTACK, RK_SLOT_UTILITY };
+
+static EWRAM_DATA struct LevelUpMove sRKLearnsets[RK_LEARNSET_CACHE][RK_LEARNSET_SLOTS + 1] = {0};
+static EWRAM_DATA u16 sRKLearnsetKey[RK_LEARNSET_CACHE] = {0};   // species + 1, 0 = empty
+static EWRAM_DATA u32 sRKLearnsetSeed[RK_LEARNSET_CACHE] = {0};
+static EWRAM_DATA u8 sRKLearnsetNext = 0;
+
+// Power tiers of the attacks (STAB and other-type attacks)
+enum { RK_TIER_1, RK_TIER_2, RK_TIER_3, RK_TIER_4, RK_TIER_5, RK_TIER_COUNT };
+
+static const u8 sRKTierMinPower[RK_TIER_COUNT] = {  2, 46, 66,  86, 111 };
+static const u8 sRKTierMaxPower[RK_TIER_COUNT] = { 45, 65, 85, 110, 255 };
+
+// Chance (in %) of each power tier, by learn level. Better attacks get likelier as levels go up.
+static const u8 sRKTierWeights[5][RK_TIER_COUNT] =
+{
+    //  <=45  46-65  66-85  86-110  111+
+    {    62,    28,     8,     1,     1 }, // levels  1-12
+    {    32,    42,    20,     5,     1 }, // levels 13-25
+    {    11,    34,    36,    15,     4 }, // levels 26-40
+    {     5,    20,    38,    27,    10 }, // levels 41-55
+    {     1,    10,    34,    36,    19 }, // levels 56-71
+};
+
+static u8 GetRKLevelBand(u8 level)
+{
+    if (level <= 12) return 0;
+    if (level <= 25) return 1;
+    if (level <= 40) return 2;
+    if (level <= 55) return 3;
+    return 4;
+}
+
+static u8 PickRKPowerTier(struct Sfc32State *state, u8 level)
+{
+    const u8 *weights = sRKTierWeights[GetRKLevelBand(level)];
+    u32 roll = RandomizerNextRange(state, 100);
+    u32 tier;
+
+    for (tier = 0; tier < RK_TIER_COUNT; tier++)
+    {
+        if (roll < weights[tier])
+            return tier;
+        roll -= weights[tier];
+    }
+    return RK_TIER_COUNT - 1;
+}
+
+static bool32 IsRKMoveAllowed(u16 move)
+{
+    if (move == MOVE_NONE || move >= MOVES_COUNT || GetMoveRandomizerInvalid(move))
+        return FALSE;
+
+    switch (move)
+    {
+    // useless or doubles-only moves
+    case MOVE_STRUGGLE:
+    case MOVE_SPLASH:
+    case MOVE_CELEBRATE:
+    case MOVE_HOLD_HANDS:
+    case MOVE_HAPPY_HOUR:
+    case MOVE_HELPING_HAND:
+    case MOVE_FOLLOW_ME:
+    case MOVE_RAGE_POWDER:
+    case MOVE_ALLY_SWITCH:
+    case MOVE_AFTER_YOU:
+    case MOVE_QUASH:
+    case MOVE_INSTRUCT:
+    case MOVE_SPOTLIGHT:
+    case MOVE_AROMATIC_MIST:
+    case MOVE_DECORATE:
+    case MOVE_COACHING:
+    case MOVE_DRAGON_CHEER:
+    // in single battles these only help the opponent
+    case MOVE_PURIFY:
+    case MOVE_HEAL_PULSE:
+    case MOVE_FLORAL_HEALING:
+        return FALSE;
+    }
+    return TRUE;
+}
+
+// minPower/maxPower: power window for attacks. anyType: drop the STAB / other-type rule.
+static bool32 IsRKMoveValidForSlot(u16 move, u8 kind, enum Type stabType, enum Type type1, enum Type type2,
+                                   u32 minPower, u32 maxPower, bool32 anyType)
+{
+    bool32 isStatus;
+    u32 power;
+    enum Type moveType;
+
+    if (!IsRKMoveAllowed(move))
+        return FALSE;
+
+    isStatus = (GetMoveCategory(move) == DAMAGE_CATEGORY_STATUS);
+    power = GetMovePower(move);
+    moveType = GetMoveType(move);
+
+    if (kind == RK_SLOT_UTILITY)
+        return isStatus;
+
+    if (isStatus || power <= 1) // attacks only, with a real base power
+        return FALSE;
+    if (power < minPower || power > maxPower)
+        return FALSE;
+    if (anyType)
+        return TRUE;
+    if (kind == RK_SLOT_STAB)
+        return moveType == stabType;
+    return moveType != type1 && moveType != type2; // coverage: any other type
+}
+
+static bool32 IsRKMoveInList(const struct LevelUpMove *list, u32 count, u16 move)
+{
+    u32 i;
+
+    for (i = 0; i < count; i++)
+    {
+        if (list[i].move == move)
+            return TRUE;
+    }
+    return FALSE;
+}
+
+static u16 PickRKMove(struct Sfc32State *state, const struct LevelUpMove *list, u32 count,
+                      u8 kind, enum Type stabType, enum Type type1, enum Type type2, u32 minPower, u32 maxPower, bool32 anyType)
+{
+    u32 attempt;
+
+    for (attempt = 0; attempt < RK_PICK_ATTEMPTS; attempt++)
+    {
+        u16 candidate = RandomizerNextRange(state, MOVES_COUNT - 1) + 1;
+
+        if (IsRKMoveValidForSlot(candidate, kind, stabType, type1, type2, minPower, maxPower, anyType)
+         && !IsRKMoveInList(list, count, candidate))
+            return candidate;
+    }
+    return MOVE_NONE;
+}
+
+static void BuildRKStyleLearnset(u16 species, struct LevelUpMove *list)
+{
+    struct Sfc32State state = RandomizerRandSeed(RANDOMIZER_REASON_LEARNSET, species, 0x524B); // "RK"
+    enum Type type1 = GetSpeciesType(species, 0);
+    enum Type type2 = GetSpeciesType(species, 1);
+    u8 kinds[RK_LEARNSET_SLOTS];
+    u32 stabCount = 0;
+    u32 slot, i;
+
+    // 8 STAB + 8 attacks + 8 utility. The first move is always an attack (STAB or not),
+    // the other 23 come in random order.
+    for (i = 0; i < RK_LEARNSET_SLOTS; i++)
+        kinds[i] = i / 8; // RK_SLOT_STAB x8, RK_SLOT_ATTACK x8, RK_SLOT_UTILITY x8
+    if (RandomizerNextRange(&state, 2) == 1)
+    {
+        kinds[0] = RK_SLOT_ATTACK; // swap the first STAB with the first attack
+        kinds[8] = RK_SLOT_STAB;
+    }
+    for (i = RK_LEARNSET_SLOTS - 1; i > 1; i--) // shuffle slots 1..23
+    {
+        u32 j = 1 + RandomizerNextRange(&state, i); // 1..i
+        u8 tmp = kinds[i];
+        kinds[i] = kinds[j];
+        kinds[j] = tmp;
+    }
+
+    for (slot = 0; slot < RK_LEARNSET_SLOTS; slot++)
+    {
+        u8 kind = kinds[slot];
+        u8 level = sRKLearnLevels[slot];
+        enum Type stabType = type1;
+        u16 move = MOVE_NONE;
+
+        if (kind == RK_SLOT_STAB)
+        {
+            // dual-type Pokemon alternate between both types
+            if (type2 != type1 && (stabCount % 2) == 1)
+                stabType = type2;
+            stabCount++;
+        }
+
+        if (kind == RK_SLOT_UTILITY)
+        {
+            move = PickRKMove(&state, list, slot, kind, stabType, type1, type2, 0, 0, FALSE);
+        }
+        else
+        {
+            // Roll a power tier; if that tier has nothing left for this type,
+            // try the nearest tiers (lower first), then any power, then any type.
+            u8 tier = PickRKPowerTier(&state, level);
+            u32 dist;
+
+            for (dist = 0; dist < RK_TIER_COUNT && move == MOVE_NONE; dist++)
+            {
+                if (tier >= dist)
+                    move = PickRKMove(&state, list, slot, kind, stabType, type1, type2,
+                                      sRKTierMinPower[tier - dist], sRKTierMaxPower[tier - dist], FALSE);
+                if (move == MOVE_NONE && dist != 0 && tier + dist < RK_TIER_COUNT)
+                    move = PickRKMove(&state, list, slot, kind, stabType, type1, type2,
+                                      sRKTierMinPower[tier + dist], sRKTierMaxPower[tier + dist], FALSE);
+            }
+            if (move == MOVE_NONE)
+                move = PickRKMove(&state, list, slot, kind, stabType, type1, type2, 2, 255, TRUE);
+        }
+        if (move == MOVE_NONE)
+            move = MOVE_TACKLE;
+
+        list[slot].move = move;
+        list[slot].level = level;
+    }
+    list[RK_LEARNSET_SLOTS].move = LEVEL_UP_MOVE_END;
+    list[RK_LEARNSET_SLOTS].level = 0;
+}
+
+const struct LevelUpMove *RKStyle_GetLevelUpLearnset(u16 species)
+{
+    u32 seed = GetRandomizerSeed();
+    u32 i;
+
+    for (i = 0; i < RK_LEARNSET_CACHE; i++)
+    {
+        if (sRKLearnsetKey[i] == species + 1 && sRKLearnsetSeed[i] == seed)
+            return sRKLearnsets[i];
+    }
+
+    i = sRKLearnsetNext;
+    sRKLearnsetNext = (sRKLearnsetNext + 1) % RK_LEARNSET_CACHE;
+    BuildRKStyleLearnset(species, sRKLearnsets[i]);
+    sRKLearnsetKey[i] = species + 1;
+    sRKLearnsetSeed[i] = seed;
+    return sRKLearnsets[i];
+}
+
+bool32 RKStyle_UsesCustomLearnsets(void)
+{
+    return gSaveBlock3Ptr->challengeSettings.tx_Nuzlocke_RKStyle && RandomizerFeatureEnabled(RANDOMIZE_LEARNSET);
+}

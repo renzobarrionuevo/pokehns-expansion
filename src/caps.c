@@ -1,4 +1,5 @@
 #include "global.h"
+#include "nuzlocke.h"
 #include "battle.h"
 #include "event_data.h"
 #include "caps.h"
@@ -45,6 +46,8 @@ static const u8 sLevelCapTable_Hard[] =
 // Post-league caps, matching HnS: beating the Johto Elite Four raises the cap to
 // 70 for the Kanto half, and only beating the Kanto league removes it entirely.
 #define KANTO_MAX_LEVEL 70
+#define RKSTYLE_RED_LEVEL_CAP 80
+#define RKSTYLE_RED_POSTOBC_LEVEL_CAP 87
 
 u32 GetCurrentLevelCap(void)
 {
@@ -70,6 +73,15 @@ u32 GetCurrentLevelCap(void)
             badgeCount = 8;
 
 #if IS_HNS
+        // RKstyle: after the Kanto League keep a cap until Red is beaten, so the
+        // postgame bosses and Red are fought at even levels.
+        if (FlagGet(FLAG_IS_KANTO_CHAMPION) && IsRKStyleActive() && !FlagGet(FLAG_DEFEATED_RED))
+        {
+            if (VarGet(VAR_SINJOH_STORYLINE) >= 13) // Red uses his stronger team (85-87, Pikachu 95)
+                return RKSTYLE_RED_POSTOBC_LEVEL_CAP;
+            return RKSTYLE_RED_LEVEL_CAP;           // Red's team 77-80 (Pikachu 93), rematches 74-79
+        }
+
         if (FlagGet(FLAG_IS_KANTO_CHAMPION))
             return MAX_LEVEL;
 

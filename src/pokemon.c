@@ -3698,6 +3698,7 @@ void CreateEnemyEventMon(void)
         heldItem[1] = itemId >> 8;
         SetMonData(&gEnemyParty[0], MON_DATA_HELD_ITEM, heldItem);
     }
+    gRKStyleFixedEncounter = TRUE; // RKstyle: event encounter, never blocked by the zone rule
     SetNuzlockeChecks();
 }
 
@@ -3957,7 +3958,7 @@ void GiveBoxMonInitialMoveset(struct BoxPokemon *boxMon) //Credit: AsparagusEdua
 
         move = learnset[i].move;
 #if RANDOMIZER_AVAILABLE
-        if (RandomizerFeatureEnabled(RANDOMIZE_LEARNSET))
+        if (RandomizerFeatureEnabled(RANDOMIZE_LEARNSET) && !RKStyle_UsesCustomLearnsets()) // RK lists are already random
         {
             move = RandomizeMove(move, species);
             if (!FlagGet(FLAG_SYS_POKEMON_GET) && !firstMoveGiven)
@@ -4090,7 +4091,7 @@ enum Move MonTryLearningNewMoveAtLevel(struct Pokemon *mon, bool32 firstMove, u3
     {
         gMoveToLearn = learnset[sLearningMoveTableID].move;
 #if RANDOMIZER_AVAILABLE
-        if (RandomizerFeatureEnabled(RANDOMIZE_LEARNSET))
+        if (RandomizerFeatureEnabled(RANDOMIZE_LEARNSET) && !RKStyle_UsesCustomLearnsets()) // RK lists are already random
             gMoveToLearn = RandomizeMove(gMoveToLearn, species);
 #endif
         sLearningMoveTableID++;
@@ -5862,6 +5863,12 @@ const struct LevelUpMove *GetSpeciesLevelUpLearnset(u16 species)
 {
     const struct LevelUpMove *learnset;
     u16 sanitized = SanitizeSpeciesId(species);
+
+#if RANDOMIZER_AVAILABLE
+    // RKstyle: 24 moves per species at fixed levels (8 STAB, 8 attacks, 8 utility)
+    if (sanitized != SPECIES_NONE && RKStyle_UsesCustomLearnsets())
+        return RKStyle_GetLevelUpLearnset(sanitized);
+#endif
 
     if (gSaveBlock3Ptr->challengeSettings.tx_Mode_Modern_Moves == 0)
     {
@@ -8103,6 +8110,11 @@ bool8 TryIncrementMonLevel(struct Pokemon *mon)
 u8 CanLearnTeachableMove(u16 species, enum Move move)
 {
     const u16 *teachableLearnset;
+
+    // RKstyle: every Pokemon can learn every TM and HM
+    if (IsRKStyleActive() && species != SPECIES_EGG && GetTMHMItemIdFromMoveId(move) != ITEM_NONE)
+        return TRUE;
+
 #if RANDOMIZER_AVAILABLE
     if (RandomizerFeatureEnabled(RANDOMIZE_LEARNSET))
         species = RandomizeMonBaseForm(RANDOMIZER_REASON_LEARNSET, GetRandomizerOption(RANDOMIZER_OPTION_SPECIES_MODE), species, species);

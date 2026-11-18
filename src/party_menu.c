@@ -2990,7 +2990,8 @@ static void SetPartyMonFieldSelectionActions(struct Pokemon *mons, u8 slotId)
                 }
             }
         }
-        if (numFieldMoves < maxFieldMoves && CanLearnTeachableMove(GetMonData(&mons[slotId], MON_DATA_SPECIES), MOVE_FLY))
+        if (numFieldMoves < maxFieldMoves && CanLearnTeachableMove(GetMonData(&mons[slotId], MON_DATA_SPECIES), MOVE_FLY)
+         && (!IsRKStyleActive() || CheckBagHasItem(ITEM_HM02, 1))) // RKstyle: every mon can learn FLY, so require the HM
         {
             AppendToList(sPartyMenuInternal->actions, &sPartyMenuInternal->numActions, FIELD_MOVE_FLY + MENU_FIELD_MOVES);
             numFieldMoves++;

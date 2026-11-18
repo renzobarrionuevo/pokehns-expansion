@@ -3357,9 +3357,15 @@ bool8 ScrCmd_setwildbattle(struct ScriptContext *ctx)
 
     Script_RequestEffects(SCREFF_V1);
 
+    gRKStyleFixedEncounter = TRUE; // RKstyle: fixed encounter, never blocked by the zone rule
     if (species2 == SPECIES_NONE)
     {
         CreateScriptedWildMon(species, level, item);
+        if (IsRKStyleActive()) // scripted battles don't run SetNuzlockeChecks; make sure nothing stale blocks it
+        {
+            NuzlockeIsCaptureBlocked = FALSE;
+            NuzlockeIsSpeciesClauseActive = FALSE;
+        }
         sIsScriptedWildDouble = FALSE;
     }
     else

@@ -135,6 +135,8 @@ static void HandleEndTurn_FinishBattle(void);
 static u32 Crc32B (const u8 *data, u32 size);
 static u32 GeneratePartyHash(const struct Trainer *trainer, u32 i);
 
+#define RKSTYLE_LEADER_MIN_PARTY 4 // RKstyle: gym leaders bring at least this many Pokemon
+
 EWRAM_DATA u16 gBattle_BG0_X = 0;
 EWRAM_DATA u16 gBattle_BG0_Y = 0;
 EWRAM_DATA u16 gBattle_BG1_X = 0;
@@ -2141,6 +2143,45 @@ u8 CreateNPCTrainerPartyFromTrainer(struct Pokemon *party, const struct Trainer 
                 ball = gTrainerClasses[trainer->trainerClass].ball ?: ITEM_POKE_BALL;
                 SetMonData(&party[i], MON_DATA_POKEBALL, &ball);
             }
+        }
+
+        // RKstyle: gym leaders always bring at least 4 Pokemon. Missing slots are filled
+        // with extra Pokemon at the level of the team's weakest one (random species when
+        // the trainer randomizer is on, otherwise copies of the team's own species).
+        if (IsRKStyleActive()
+         && (trainer->trainerClass == TRAINER_CLASS_LEADER_HNS || trainer->trainerClass == TRAINER_CLASS_LEADER_KANTO_HNS)
+         && !(battleTypeFlags & BATTLE_TYPE_TWO_OPPONENTS)
+         && monsCount > 0 && monsCount < RKSTYLE_LEADER_MIN_PARTY)
+        {
+            const struct TrainerMon *partyData = trainer->party;
+            u32 minLevel = MAX_LEVEL;
+            u32 originalCount = monsCount;
+
+            for (i = 0; i < originalCount; i++)
+            {
+                if (partyData[monIndices[i]].lvl < minLevel)
+                    minLevel = partyData[monIndices[i]].lvl;
+            }
+
+            for (i = originalCount; i < RKSTYLE_LEADER_MIN_PARTY; i++)
+            {
+                const struct TrainerMon *source = &partyData[monIndices[i % originalCount]];
+                u16 species = source->species;
+                u32 extraPersonality = (trainer->gender == TRAINER_GENDER_FEMALE ? 0x78 : 0x88) + (GeneratePartyHash(trainer, i % originalCount) << 8) + i;
+                struct OriginalTrainerId extraOtId = OTID_STRUCT_RANDOM_NO_SHINY;
+                s32 ball;
+
+                #if RANDOMIZER_AVAILABLE == TRUE
+                species = RandomizeTrainerMon(trainer->trainerClass, i, RKSTYLE_LEADER_MIN_PARTY + trainer->partySize, species);
+                #endif
+                CreateMon(&party[i], species, minLevel, extraPersonality, extraOtId);
+                CustomTrainerPartyAssignMoves(&party[i], source);
+                SetMonData(&party[i], MON_DATA_IVS, &source->iv);
+                CalculateMonStats(&party[i]);
+                ball = gTrainerClasses[trainer->trainerClass].ball ?: ITEM_POKE_BALL;
+                SetMonData(&party[i], MON_DATA_POKEBALL, &ball);
+            }
+            monsCount = RKSTYLE_LEADER_MIN_PARTY;
         }
 
         if (gSaveBlock3Ptr->challengeSettings.tx_Challenges_TrainerScalingIVs)
@@ -5946,7 +5987,8 @@ static void HandleEndTurn_FinishBattle(void)
                 {
                     // RKstyle: a zone is only used up by actually catching a Pokemon there,
                     // not by the first encounter.
-                    if (gBattleOutcome == B_OUTCOME_CAUGHT && !IsNuzlockeCaptureSuspended())
+                    // Fixed encounters (Snorlax, Sudowoodo...) don't use up the zone either.
+                    if (gBattleOutcome == B_OUTCOME_CAUGHT && !IsNuzlockeCaptureSuspended() && !gRKStyleFixedEncounter)
                         NuzlockeFlagSet(NuzlockeGetCurrentRegionMapSectionId());
                 }
                 else if (!NuzlockeIsSpeciesClauseActive && !OneTypeChallengeCaptureBlocked
@@ -5957,6 +5999,7 @@ static void HandleEndTurn_FinishBattle(void)
             NuzlockeIsSpeciesClauseActive = FALSE;
             OneTypeChallengeCaptureBlocked = FALSE;
         }
+        gRKStyleFixedEncounter = FALSE;
 
         // RKstyle: after every battle the surviving party Pokemon are fully healed
         // (HP, PP and status), like a Pokemon Center. Fainted Pokemon are never revived.
