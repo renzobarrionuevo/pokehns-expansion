@@ -7107,6 +7107,153 @@ static bool32 IsSpeciesAlreadyEvolved(u32 species)
     return FALSE;
 }
 
+// RKstyle: level at which a Pokemon whose evolution normally needs an item, friendship,
+// a move, a trade, a location... evolves by simply levelling up.
+static u32 GetRKStyleEvolutionLevel(u32 species)
+{
+    switch (species)
+    {
+    case SPECIES_SUNKERN:
+        return 20;
+    case SPECIES_PIKACHU:
+    case SPECIES_CLEFAIRY:
+    case SPECIES_JIGGLYPUFF:
+    case SPECIES_TOGETIC:
+    case SPECIES_ROSELIA:
+        return 30; // evolved from a baby, but still an early-game Pokemon
+    case SPECIES_EEVEE:
+    case SPECIES_PORYGON:
+    case SPECIES_SKITTY:
+        return 25;
+    case SPECIES_CHANSEY:
+    case SPECIES_MAGNETON:
+    case SPECIES_ELECTABUZZ:
+    case SPECIES_MAGMAR:
+    case SPECIES_PORYGON2:
+    case SPECIES_SEADRA:
+        return 40;
+    case SPECIES_URSARING:
+        return 42;
+    case SPECIES_PILOSWINE:
+    case SPECIES_DUSCLOPS:
+        return 45;
+    case SPECIES_RHYDON:
+        return 50;
+    }
+
+    // General rule for every other species (all nine generations)
+    if (gSpeciesInfo[species].eggGroups[0] == EGG_GROUP_NO_EGGS_DISCOVERED
+     && !gSpeciesInfo[species].isRestrictedLegendary
+     && !gSpeciesInfo[species].isSubLegendary
+     && !gSpeciesInfo[species].isMythical
+     && !gSpeciesInfo[species].isUltraBeast)
+        return 15; // baby Pokemon
+    if (IsSpeciesAlreadyEvolved(species))
+        return 36; // second-stage Pokemon
+    return 30;
+}
+
+// Conditions that depend only on the individual Pokemon (gender, stats, personality, nature).
+static bool32 IsRKStyleIntrinsicEvoCondition(u32 condition)
+{
+    switch (condition)
+    {
+    case IF_GENDER:
+    case IF_ATK_GT_DEF:
+    case IF_ATK_EQ_DEF:
+    case IF_ATK_LT_DEF:
+    case IF_PID_UPPER_MODULO_10_GT:
+    case IF_PID_UPPER_MODULO_10_EQ:
+    case IF_PID_UPPER_MODULO_10_LT:
+    case IF_NATURE:
+    case IF_AMPED_NATURE:
+    case IF_LOW_KEY_NATURE:
+    case IF_PID_MODULO_100_GT:
+    case IF_PID_MODULO_100_EQ:
+    case IF_PID_MODULO_100_LT:
+        return TRUE;
+    default:
+        return FALSE;
+    }
+}
+
+// RKstyle: every Pokemon can evolve by level. Used only when no regular evolution
+// triggered on this level-up, so the original methods (stones, held items...) still work.
+// With several possible targets (Eevee, Gloom...) each individual Pokemon always gets
+// the same one, picked from its personality value.
+static u32 GetRKStyleLevelEvolution(struct Pokemon *mon, const struct Evolution *evolutions, u32 species, u32 level)
+{
+    u16 candidates[16];
+    u32 count = 0;
+    u32 i, j;
+
+    for (i = 0; evolutions[i].method != EVOLUTIONS_END; i++)
+    {
+        u32 target = evolutions[i].targetSpecies;
+        const struct EvolutionParam *params = evolutions[i].params;
+        bool32 onlyIntrinsic = TRUE;
+        bool32 genderOk = TRUE;
+        u32 requiredLevel;
+
+        if (SanitizeSpeciesId(target) == SPECIES_NONE || !IsSpeciesEnabled(target))
+            continue;
+
+        if (params != NULL)
+        {
+            for (j = 0; params[j].condition != CONDITIONS_END; j++)
+            {
+                if (!IsRKStyleIntrinsicEvoCondition(params[j].condition))
+                    onlyIntrinsic = FALSE;
+                if (params[j].condition == IF_GENDER && GetMonGender(mon) != params[j].arg1)
+                    genderOk = FALSE;
+            }
+        }
+
+        switch (evolutions[i].method)
+        {
+        case EVO_LEVEL:
+        case EVO_LEVEL_BATTLE_ONLY:
+            if (evolutions[i].param > 0 && onlyIntrinsic)
+            {
+                // This species already evolves by plain level (e.g. Slowpoke -> Slowbro):
+                // leave it to the regular rules, so its level evolution is never pre-empted.
+                if (evolutions[i].method == EVO_LEVEL)
+                    return SPECIES_NONE;
+                requiredLevel = evolutions[i].param;
+            }
+            else if (evolutions[i].param > 0)
+                requiredLevel = evolutions[i].param; // same level, without the extra condition (time, place...)
+            else
+                requiredLevel = GetRKStyleEvolutionLevel(species); // friendship, move, held item...
+            break;
+        case EVO_ITEM:
+        case EVO_TRADE:
+        case EVO_BATTLE_END:
+        case EVO_SPIN:
+        case EVO_SCRIPT_TRIGGER:
+            requiredLevel = GetRKStyleEvolutionLevel(species);
+            break;
+        default: // EVO_NONE, EVO_SPLIT_FROM_EVO
+            continue;
+        }
+
+        if (!genderOk || level < requiredLevel)
+            continue;
+
+        for (j = 0; j < count; j++)
+        {
+            if (candidates[j] == target)
+                break;
+        }
+        if (j == count && count < ARRAY_COUNT(candidates))
+            candidates[count++] = target;
+    }
+
+    if (count == 0)
+        return SPECIES_NONE;
+    return candidates[GetMonData(mon, MON_DATA_PERSONALITY) % count];
+}
+
 u32 GetEvolutionTargetSpecies(struct Pokemon *mon, enum EvolutionMode mode, u16 evolutionItem, struct Pokemon *tradePartner, bool32 *canStopEvo, enum EvoState evoState)
 {
     int i;
@@ -7180,6 +7327,8 @@ u32 GetEvolutionTargetSpecies(struct Pokemon *mon, enum EvolutionMode mode, u16 
                 break;
             }
         }
+        if (targetSpecies == SPECIES_NONE && IsRKStyleActive())
+            targetSpecies = GetRKStyleLevelEvolution(mon, evolutions, species, level);
         break;
     case EVO_MODE_TRADE:
         for (i = 0; evolutions[i].method != EVOLUTIONS_END; i++)
