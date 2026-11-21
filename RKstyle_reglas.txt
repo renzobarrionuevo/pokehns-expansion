@@ -394,6 +394,41 @@ FIN DEL NUZLOCKE
       la pagina 5, que RK deja en NO. Los objetos equipados en sus
       Pokemon si funcionan, igual que los tuyos.
 
+3.19 Como se elige el Pokemon que reemplaza a otro
+
+    En RK, cada Pokemon al azar (salvajes, entrenadores, lideres,
+    encuentros fijos, huevos e iniciales) se elige por su total de
+    estadisticas base (BST), con forma de campana: lo mas probable es
+    algo parecido al original, pero puede salir algo mejor o peor.
+
+      Diferencia de BST con el original     Probabilidad
+        hasta 10% (mas o menos) ................ 60%
+        11% a 25% ............................. 25%  (mitad mejor, mitad peor)
+        26% a 40% ............................. 10%  (mitad mejor, mitad peor)
+        41% a 60% .............................  5%  (mitad mejor, mitad peor)
+
+    - No se tiene en cuenta la etapa evolutiva: un Pokemon base puede
+      ser reemplazado por uno evolucionado y al reves, si su BST cae en
+      la franja sorteada.
+    - Un legendario solo se reemplaza por otro legendario, y un Pokemon
+      normal solo por otro normal.
+    - Los 3 iniciales que ofrece Elm son siempre Pokemon base: la
+      primera forma de una linea que puede evolucionar.
+    - Una franja solo se usa si ofrece al menos 6 Pokemon distintos; si
+      no, se usa la franja mas cercana al original. Asi se evita que un
+      unico candidato salga siempre (por ejemplo Slaking, el unico
+      Pokemon no legendario con mas de 600 de BST).
+    - Las variantes que solo cambian de aspecto (diseños de Scatterbug y
+      Vivillon, letras de Unown, colores de Minior...) cuentan como un
+      solo Pokemon, para que no salgan mas seguido que el resto. Las
+      formas regionales si cuentan aparte, porque cambian tipo o stats.
+    - Nunca salen formas que solo existen en combate: Megas,
+      Gigamax, Wishiwashi en banco, Zygarde completo, etc.
+
+    Simulacion (600 reemplazos): 59% quedaron a menos de 10% del
+    original, 26% entre 11 y 25%, 10% entre 26 y 40% y 4% entre 41 y
+    60%.
+
 
 --------------------------------------------------------------
 4. PAGINA 1 DEL MENU - MODO
@@ -478,17 +513,13 @@ solo se cumple si se desactiva "Abilities" en el randomizer.
                                        cambian los Pokemon con nombre
                                        propio, los del casino, los
                                        errantes y algunos especiales.
-  Similar Evolution Level ... ON       Cada Pokemon se reemplaza por otro
-                                       de etapa evolutiva parecida: un
-                                       basico por otro basico. Evita un
-                                       Tyranitar salvaje en la ruta 1.
-                                       No tiene que ver con como
-                                       evolucionan tus Pokemon.
-  Include Legendaries ....... ON       Sin efecto mientras "Similar" este
-                                       activado: con Similar, los
-                                       legendarios solo se reemplazan
-                                       entre si y los demas Pokemon nunca
-                                       pasan a ser legendarios.
+  Similar Evolution Level ... ON       Sin efecto en RK: el reemplazo se
+                                       elige por estadisticas (seccion
+                                       3.19), no por etapa evolutiva.
+  Include Legendaries ....... ON       Sin efecto en RK: un legendario
+                                       solo se reemplaza por otro
+                                       legendario y un Pokemon normal
+                                       por otro normal (seccion 3.19).
   Gen Scope ................. GEN 1-9  El sorteo usa Pokemon de las nueve
                                        generaciones. (La otra opcion,
                                        GEN 1-3, lo limita a las familias

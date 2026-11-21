@@ -911,10 +911,216 @@ static u16 RandomizeMonTableLookup(struct Sfc32State* state, enum RandomizerSpec
     return species;
 }
 
-static u16 RandomizeMonFromSeed(struct Sfc32State *state, enum RandomizerSpeciesMode mode, u16 species)
+// =============================================================================
+// RKstyle species replacement: a bell curve around the original's base stat total.
+// A replacement with a similar BST (within 10%) is the most likely, but stronger or
+// weaker Pokemon can show up too. Evolution stage is ignored. Legendaries are only
+// replaced by legendaries, and normal Pokemon by normal ones.
+// =============================================================================
+
+#define RK_BST_PICK_ATTEMPTS 3000
+
+// |BST change| bands, in percent of the original BST
+static const u8 sRKBstBandMin[]    = {  0, 11, 26, 41 };
+static const u8 sRKBstBandMax[]    = { 10, 25, 40, 60 };
+static const u8 sRKBstBandWeight[] = { 60, 25, 10,  5 }; // chance of each band, in %
+
+static u32 GetRKSpeciesBST(u16 species)
+{
+    const struct SpeciesInfo *info = &gSpeciesInfo[species];
+    return info->baseHP + info->baseAttack + info->baseDefense
+         + info->baseSpAttack + info->baseSpDefense + info->baseSpeed;
+}
+
+// Unevolved first stage of a line that can evolve (for the starters)
+static bool32 IsRKBaseSpecies(u16 species)
+{
+    const struct Evolution *evos = GetSpeciesEvolutions(species);
+
+    if (evos == NULL || evos[0].method == EVOLUTIONS_END)
+        return FALSE;
+    return GetSpeciesPreEvolution(species) == SPECIES_NONE; // slow lookup, checked last
+}
+
+// Forms that only exist during a battle (Mega, Gigantamax, Wishiwashi in a school...)
+// can't be handed out as a regular Pokemon.
+static bool32 IsRKBattleOnlyForm(u16 species)
+{
+    const struct SpeciesInfo *info = &gSpeciesInfo[species];
+
+    if (info->isMegaEvolution || info->isPrimalReversion || info->isUltraBurst
+     || info->isGigantamax || info->isTeraForm || info->isTotem)
+        return TRUE;
+
+    switch (species)
+    {
+    case SPECIES_WISHIWASHI_SCHOOL:
+    case SPECIES_ZYGARDE_COMPLETE:
+    case SPECIES_DARMANITAN_ZEN:
+    case SPECIES_DARMANITAN_GALAR_ZEN:
+    case SPECIES_AEGISLASH_BLADE:
+    case SPECIES_MELOETTA_PIROUETTE:
+    case SPECIES_CHERRIM_SUNSHINE:
+    case SPECIES_EISCUE_NOICE:
+    case SPECIES_MORPEKO_HANGRY:
+    case SPECIES_CRAMORANT_GULPING:
+    case SPECIES_CRAMORANT_GORGING:
+    case SPECIES_MIMIKYU_BUSTED:
+    case SPECIES_PALAFIN_HERO:
+    case SPECIES_TERAPAGOS_TERASTAL:
+    case SPECIES_TERAPAGOS_STELLAR:
+    case SPECIES_ZACIAN_CROWNED:
+    case SPECIES_ZAMAZENTA_CROWNED:
+    case SPECIES_NECROZMA_ULTRA:
+        return TRUE;
+    }
+    return FALSE;
+}
+
+// Cosmetic variants (Scatterbug/Vivillon patterns, Unown letters, Minior colors...)
+// share types and stats with their first form; only that first form is a candidate,
+// so a Pokemon with many looks isn't many times likelier to be picked.
+static bool32 IsRKCosmeticForm(u16 species)
+{
+    const u16 *forms = gSpeciesInfo[species].formSpeciesIdTable;
+    u16 base;
+
+    if (forms == NULL || forms[0] == species)
+        return FALSE;
+    base = forms[0];
+    return gSpeciesInfo[base].types[0] == gSpeciesInfo[species].types[0]
+        && gSpeciesInfo[base].types[1] == gSpeciesInfo[species].types[1]
+        && GetRKSpeciesBST(base) == GetRKSpeciesBST(species);
+}
+
+static bool32 IsRKBstCandidate(u16 candidate, bool32 legendary, bool32 requireBase, u32 minBst, u32 maxBst)
+{
+    u32 bst;
+
+    bst = GetRKSpeciesBST(candidate);
+    if (bst < minBst || bst > maxBst)
+        return FALSE;
+    if (!IsSpeciesPermitted(candidate) || IsRKBattleOnlyForm(candidate) || IsRKCosmeticForm(candidate))
+        return FALSE;
+    if (IsRandomizerLegendary(candidate) != legendary)
+        return FALSE;
+    return !requireBase || IsRKBaseSpecies(candidate); // slowest check last
+}
+
+// Used by the simulation test: TRUE if species can be picked as a replacement.
+bool32 RKStyle_IsReplacementCandidate(u16 species, bool32 legendary)
+{
+    return IsRKBstCandidate(species, legendary, FALSE, 0, 0xFFFF);
+}
+
+static u16 RKStyleSampleInWindow(struct Sfc32State *state, bool32 legendary, bool32 requireBase, u32 minBst, u32 maxBst)
+{
+    u32 attempt;
+
+    for (attempt = 0; attempt < RK_BST_PICK_ATTEMPTS; attempt++)
+    {
+        u16 candidate = RandomizerNextRange(state, RANDOMIZER_SPECIES_COUNT - 1) + 1;
+
+        if (IsRKBstCandidate(candidate, legendary, requireBase, minBst, maxBst))
+            return candidate;
+    }
+    return SPECIES_NONE;
+}
+
+// A band is only used if it offers at least this many different Pokemon. Otherwise
+// a lone candidate (e.g. Slaking, the only non-legendary above 600 BST) would show up
+// every time that band is rolled. Below this, the pick moves to the next closer band.
+#define RK_MIN_BAND_OPTIONS 6
+
+static bool32 HasEnoughRKCandidates(bool32 legendary, bool32 requireBase, u32 minBst, u32 maxBst)
+{
+    u32 species, count = 0;
+
+    for (species = 1; species < RANDOMIZER_SPECIES_COUNT; species++)
+    {
+        if (IsRKBstCandidate(species, legendary, requireBase, minBst, maxBst) && ++count >= RK_MIN_BAND_OPTIONS)
+            return TRUE;
+    }
+    return FALSE;
+}
+
+static void GetRKBandWindow(u32 bst, u32 band, s32 sign, u32 *minBst, u32 *maxBst)
+{
+    if (band == 0)
+    {
+        *minBst = bst * (100 - sRKBstBandMax[0]) / 100;
+        *maxBst = bst * (100 + sRKBstBandMax[0]) / 100;
+    }
+    else if (sign > 0)
+    {
+        *minBst = bst * (100 + sRKBstBandMin[band]) / 100;
+        *maxBst = bst * (100 + sRKBstBandMax[band]) / 100;
+    }
+    else
+    {
+        *minBst = bst * (100 - sRKBstBandMax[band]) / 100;
+        *maxBst = bst * (100 - sRKBstBandMin[band]) / 100;
+    }
+}
+
+static u16 RKStylePickByBST(struct Sfc32State *state, u16 species, bool32 requireBase)
+{
+    u32 bst = GetRKSpeciesBST(species);
+    bool32 legendary = IsRandomizerLegendary(species);
+    u32 roll = RandomizerNextRange(state, 100);
+    u32 band, b, minBst, maxBst;
+    s32 sign;
+    u16 result;
+
+    for (band = 0; band < ARRAY_COUNT(sRKBstBandWeight) - 1; band++)
+    {
+        if (roll < sRKBstBandWeight[band])
+            break;
+        roll -= sRKBstBandWeight[band];
+    }
+    sign = RandomizerNextRange(state, 2) ? 1 : -1;
+
+    // The rolled band and side, then the other side, then closer bands. Outer bands
+    // with too few options are skipped; the +-10% band is always allowed.
+    for (b = band + 1; b-- > 0;)
+    {
+        GetRKBandWindow(bst, b, sign, &minBst, &maxBst);
+        if (b == 0 || HasEnoughRKCandidates(legendary, requireBase, minBst, maxBst))
+        {
+            result = RKStyleSampleInWindow(state, legendary, requireBase, minBst, maxBst);
+            if (result != SPECIES_NONE)
+                return result;
+        }
+        if (b != 0)
+        {
+            GetRKBandWindow(bst, b, -sign, &minBst, &maxBst);
+            if (HasEnoughRKCandidates(legendary, requireBase, minBst, maxBst))
+            {
+                result = RKStyleSampleInWindow(state, legendary, requireBase, minBst, maxBst);
+                if (result != SPECIES_NONE)
+                    return result;
+            }
+        }
+    }
+    // nothing close enough: anything of the same kind
+    result = RKStyleSampleInWindow(state, legendary, requireBase, 0, 0xFFFF);
+    return result != SPECIES_NONE ? result : species;
+}
+
+static bool32 UseRKStyleSpeciesPick(enum RandomizerReason reason)
+{
+    return gSaveBlock3Ptr->challengeSettings.tx_Nuzlocke_RKStyle
+        && reason != RANDOMIZER_REASON_LEARNSET
+        && !IsChaosMode();
+}
+
+static u16 RandomizeMonFromSeed(struct Sfc32State *state, enum RandomizerSpeciesMode mode, u16 species, enum RandomizerReason reason, bool32 requireBase)
 {
     if (!IsSpeciesValidForRandomizer(species))
         return species;
+
+    if (UseRKStyleSpeciesPick(reason))
+        return RKStylePickByBST(state, species, requireBase);
 
     if (mode >= MAX_MON_MODE)
         mode = MON_RANDOM;
@@ -945,7 +1151,8 @@ void GetUniqueMonList(enum RandomizerReason reason, enum RandomizerSpeciesMode m
             u32 bitVectorWord;
             u8 bitIndex;
 
-            curMon = RandomizeMonFromSeed(&state, mode, curOriginal);
+            // RKstyle: the three starters (first slots of the starter/gift table) are base Pokemon
+            curMon = RandomizeMonFromSeed(&state, mode, curOriginal, reason, reason == RANDOMIZER_REASON_STARTER_AND_GIFT_MON && i < 3);
 
             adjustedCurMon = curMon - 1;
             wordIndex = adjustedCurMon / 32;
@@ -967,7 +1174,7 @@ u16 RandomizeMonBaseForm(enum RandomizerReason reason, enum RandomizerSpeciesMod
 {
     struct Sfc32State state;
     state = RandomizerRandSeed(reason, seed, species);
-    return RandomizeMonFromSeed(&state, mode, species);
+    return RandomizeMonFromSeed(&state, mode, species, reason, FALSE);
 }
 
 static u16 ChooseRandomForm(struct Sfc32State *state, const u16 baseSpecies)
@@ -1034,7 +1241,13 @@ u16 RandomizeMon(enum RandomizerReason reason, enum RandomizerSpeciesMode mode, 
 
     state = RandomizerRandSeed(reason, seed, species);
 
-    resultSpecies = RandomizeMonFromSeed(&state, mode, species);
+    resultSpecies = RandomizeMonFromSeed(&state, mode, species, reason, FALSE);
+
+    // RKstyle already draws from every form directly; re-rolling the form here
+    // could turn the pick into a Mega or another form with very different stats.
+    if (UseRKStyleSpeciesPick(reason))
+        return resultSpecies;
+
     speciesMode = gSpeciesInfo[resultSpecies].randomizerMode;
 
     switch (speciesMode)

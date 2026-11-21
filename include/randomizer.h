@@ -88,6 +88,7 @@ u32 RandomizerNextRange(struct Sfc32State* state, u32 range);
 u16 RandomizerRand(enum RandomizerReason reason, u32 data1, u32 data2);
 const struct LevelUpMove *RKStyle_GetLevelUpLearnset(u16 species);
 bool32 RKStyle_UsesCustomLearnsets(void);
+bool32 RKStyle_IsReplacementCandidate(u16 species, bool32 legendary);
 u16 RandomizerRandRange(enum RandomizerReason reason, u32 data1, u32 data2, u16 range);
 
 static inline u8 RandomizeMonType(u16 species, u8 typeNum)
