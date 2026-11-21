@@ -320,6 +320,7 @@ struct ChallengeSettings
     u8 tx_Nuzlocke_EasyMode:1;
     u8 tx_Nuzlocke_RareCandy:1;
     u8 tx_Nuzlocke_RKStyle:1; // RKstyle preset mode
+    u8 tx_Nuzlocke_Nacho:1;   // Nacho mode: RKstyle restricted to Gen 1-3 (tx_Nuzlocke_RKStyle is set too)
     u8 nuzlockeEncounterFlags[16];
     // Mode / Features
     u8 tx_Mode_InfiniteTMs:1;

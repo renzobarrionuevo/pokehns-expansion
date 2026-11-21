@@ -310,6 +310,12 @@ bool8 IsRKStyleActive(void)
     return gSaveBlock3Ptr->challengeSettings.tx_Nuzlocke_RKStyle;
 }
 
+// Nacho mode: the same rules as RKstyle (IsRKStyleActive() is TRUE too), restricted to Gen 1-3
+bool8 IsNachoModeActive(void)
+{
+    return gSaveBlock3Ptr->challengeSettings.tx_Nuzlocke_Nacho;
+}
+
 bool8 IsNuzlockeNicknamingActive(void)
 {
     struct ChallengeSettings *cs = &gSaveBlock3Ptr->challengeSettings;

@@ -47,6 +47,26 @@ en el otro.
 - RK solo se puede elegir al crear la partida. Una partida ya empezada
   en otro modo no pasa a ser RK.
 
+MODO NACHO
+
+    NACHO es una copia de RK con una sola diferencia: los Pokemon al
+    azar salen solo de las generaciones 1 a 3. Todo lo demas de este
+    documento vale igual para NACHO.
+
+    - Se elige igual que RK: GAMEMODE = NACHO en la primera pagina (va
+      despues de RK), o NUZLOCKE = NACHO en la pagina 4. Con NEXT en la
+      primera pagina se empieza directo.
+    - Deja la opcion GEN SCOPE de la pagina 3 en GEN 1-3 (en RK queda en
+      GEN 1-9).
+    - "Generaciones 1 a 3" incluye a las familias completas de esos
+      Pokemon: sus evoluciones y bebes de generaciones posteriores
+      (Togekiss, Weavile, Happiny, Munchlax...) y sus formas regionales
+      (Rattata de Alola, Wooper de Paldea...).
+    - Los ataques no se limitan: la tabla de ataques RK (seccion 3.15)
+      sigue usando movimientos de todas las generaciones.
+    - Simulacion: 2714 reemplazos (salvajes, encuentros fijos, jefes e
+      iniciales), ninguno fuera de las generaciones 1 a 3.
+
 
 --------------------------------------------------------------
 2. REGLAS BASE (NUZLOCKE)

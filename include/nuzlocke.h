@@ -11,6 +11,7 @@ bool8 IsNuzlockeCaptureSuspended(void);
 bool8 IsNuzlockeEasyActive(void);
 bool8 IsNuzlockeNicknamingActive(void);
 bool8 IsRKStyleActive(void);
+bool8 IsNachoModeActive(void);
 
 u8 NuzlockeFlagSet(u16 mapsec);
 u8 NuzlockeFlagClear(u16 mapsec);

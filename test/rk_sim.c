@@ -211,3 +211,71 @@ TEST("RKSIM pool")
     }
 }
 
+
+// Nacho mode: RKstyle with the randomizer restricted to Gen 1-3. Checks that no
+// replacement falls outside the gen scope, and prints the first routes, gyms and starters.
+static u32 sNachoChecked, sNachoOutside;
+
+static u16 NachoCheck(u16 species)
+{
+    if (species == SPECIES_NONE) // empty encounter slot
+        return species;
+    sNachoChecked++;
+    if (!IsSpeciesInGenScope(species))
+    {
+        sNachoOutside++;
+        Test_MgbaPrintf("RKSIM|NOUT|%d", species);
+    }
+    return species;
+}
+
+static void SetNachoSettings(u32 seed)
+{
+    SetRKSimSettings(seed);
+    gSaveBlock3Ptr->challengeSettings.tx_Random_GenScope = 1;
+    gSaveBlock3Ptr->challengeSettings.tx_Nuzlocke_Nacho = 1;
+}
+
+TEST("RKSIM nacho")
+{
+    u32 i, t, slot, b;
+
+    SetNachoSettings(RKSIM_SEED_1);
+    sNachoChecked = sNachoOutside = 0;
+    for (i = 0; gWildMonHeaders[i].mapGroup != MAP_GROUP(MAP_UNDEFINED); i++)
+    {
+        const struct WildPokemonHeader *h = &gWildMonHeaders[i];
+        for (t = 0; t < TIMES_OF_DAY_COUNT; t++)
+        {
+            const struct WildPokemonInfo *info = h->encounterTypes[t].landMonsInfo;
+            if (info == NULL || info->wildPokemon == NULL)
+                continue;
+            for (slot = 0; slot < LAND_WILD_COUNT; slot++)
+            {
+                u16 o = info->wildPokemon[slot].species;
+                u16 r = NachoCheck(RandomizeWildEncounter(o, h->mapNum, h->mapGroup, WILD_AREA_LAND, slot));
+                if (t == TIME_DAY && (h->mapGroup == MAP_GROUP(MAP_ROUTE29_HNS) && (h->mapNum == MAP_NUM(MAP_ROUTE29_HNS) || h->mapNum == MAP_NUM(MAP_ROUTE30_HNS) || h->mapNum == MAP_NUM(MAP_ROUTE32_HNS))))
+                    Test_MgbaPrintf("RKSIM|NW|%d|%d|%d|%d|%d|%d", h->mapNum, slot, o, BST(o), r, BST(r));
+            }
+        }
+    }
+    for (b = 0; b < ARRAY_COUNT(sRKSimBosses); b++)
+    {
+        for (i = 0; i < sRKSimBosses[b].count; i++)
+        {
+            u16 o = sRKSimBosses[b].species[i];
+            u16 r = NachoCheck(RandomizeTrainerMon(sRKSimBosses[b].cls, i, sRKSimBosses[b].count, o));
+            if (b < 3)
+                Test_MgbaPrintf("RKSIM|NB|%s|%d|%d|%d|%d|%d", sRKSimBosses[b].name, sRKSimBosses[b].lvl[i], o, BST(o), r, BST(r));
+        }
+    }
+    for (i = 0; i < ARRAY_COUNT(sRKSimStatics); i++)
+        NachoCheck(RandomizeMon(RANDOMIZER_REASON_FIXED_ENCOUNTER, GetRandomizerOption(RANDOMIZER_OPTION_SPECIES_MODE), Random32(), sRKSimStatics[i].species));
+    for (i = 0; i < 3; i++)
+    {
+        u16 r = NachoCheck(RandomizeStarterAndGiftMon(i, gStarterAndGiftMonTable));
+        Test_MgbaPrintf("RKSIM|NS|%d|%d|%d|%d", gStarterAndGiftMonTable[i], BST(gStarterAndGiftMonTable[i]), r, BST(r));
+    }
+    Test_MgbaPrintf("RKSIM|NTOTAL|%d|%d", sNachoChecked, sNachoOutside);
+    EXPECT_EQ(sNachoOutside, 0);
+}
