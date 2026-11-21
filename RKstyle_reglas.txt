@@ -449,6 +449,32 @@ FIN DEL NUZLOCKE
     original, 26% entre 11 y 25%, 10% entre 26 y 40% y 4% entre 41 y
     60%.
 
+3.20 Las medicinas y los objetos de combate se cambian por objetos al azar
+
+    En RK las medicinas y los objetos de combate no sirven: el equipo se
+    cura solo despues de cada combate, no se pueden usar objetos durante
+    el combate y en el Nuzlocke no se puede revivir. Por eso:
+
+    - Toda medicina u objeto de combate que te regala un personaje o que
+      encuentras (en una Poke Ball en el suelo o como objeto oculto) se
+      cambia por un objeto al azar que NO es ninguna de esas dos cosas. Pasa siempre, desde el
+      inicio de la partida, aunque se apague la opcion "Items" del
+      randomizer.
+    - Los objetos al azar del juego (los de "Items" y los 5 del ayudante
+      de Elm) nunca son medicinas ni objetos de combate.
+    - Cuentan como medicina: pociones de PS (Pocion, Superpocion, Max.
+      Pocion, Restaurar Todo, Leche Mu-mu, refrescos...), curas de
+      estado (Antidoto, Cura Total, Caramelo Furia...), revivir
+      (Revivir, Max. Revivir, Hierba Revivir...) y PP (Eter, Elixir).
+    - Cuentan como objeto de combate: Ataque X, Defensa X, Velocidad X,
+      Precision X, Ataque Especial X, Defensa Especial X, Directo y
+      Proteccion.
+    - NO cuentan y se siguen dando normal: vitaminas (Proteina, Hierro,
+      Mas PS...), Mas PP, Caramelos Raros y bayas (las bayas se pueden
+      equipar y funcionan en combate).
+    - Las tiendas siguen vendiendo medicinas como siempre (por ejemplo
+      la Leche Mu-mu de la granja), porque se compran, no se regalan.
+
 
 --------------------------------------------------------------
 4. PAGINA 1 DEL MENU - MODO

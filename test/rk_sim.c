@@ -1,6 +1,7 @@
 #include "global.h"
 #include "test/test.h"
 #include "data.h"
+#include "item.h"
 #include "random.h"
 #include "randomizer.h"
 #include "wild_encounter.h"
@@ -279,3 +280,30 @@ TEST("RKSIM nacho")
     Test_MgbaPrintf("RKSIM|NTOTAL|%d|%d", sNachoChecked, sNachoOutside);
     EXPECT_EQ(sNachoOutside, 0);
 }
+
+// RKstyle: every healing item given or found becomes a non-healing random item.
+TEST("RKSIM healing items")
+{
+    static const u16 heals[] = {ITEM_POTION, ITEM_SUPER_POTION, ITEM_HYPER_POTION, ITEM_MAX_POTION, ITEM_FULL_RESTORE,
+                                ITEM_REVIVE, ITEM_MAX_REVIVE, ITEM_FULL_HEAL, ITEM_ANTIDOTE, ITEM_ETHER, ITEM_MAX_ELIXIR,
+                                ITEM_MOOMOO_MILK, ITEM_RAGE_CANDY_BAR, ITEM_X_ATTACK, ITEM_DIRE_HIT};
+    u32 i, j, bad = 0, checked = 0;
+
+    SetRKSimSettings(RKSIM_SEED_1);
+    gSaveBlock3Ptr->challengeSettings.tx_Random_Items = 1;
+    for (i = 0; i < ARRAY_COUNT(heals); i++)
+    {
+        for (j = 0; j < 40; j++)
+        {
+            u16 r = RandomizeFoundItem(heals[i], j % 8, j / 8, j);
+            checked++;
+            if (RKStyle_IsHealingItem(r))
+                bad++;
+            if (j < 3)
+                Test_MgbaPrintf("RKSIM|HEAL|%S|%S", GetItemName(heals[i]), GetItemName(r));
+        }
+    }
+    Test_MgbaPrintf("RKSIM|HEALTOTAL|%d|%d", checked, bad);
+    EXPECT_EQ(bad, 0);
+}
+

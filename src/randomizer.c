@@ -475,6 +475,42 @@ static inline bool32 ShouldRandomizeItem(u16 itemId)
 
 #include "data/randomizer/item_whitelist.h"
 
+// RKstyle: healing items (potions, status heals, revives, PP restores) and battle
+// items (X Attack, Dire Hit...) are of no use in RK (full heal after every battle,
+// no items in battle, no revives in a Nuzlocke).
+// Every one the player is given or finds becomes a random non-healing item, and a
+// random item is never a healing item.
+static bool32 IsRKHealingItem(u16 itemId)
+{
+    switch (gItemsInfo[itemId].sortType)
+    {
+    case ITEM_TYPE_HEALTH_RECOVERY:
+    case ITEM_TYPE_STATUS_RECOVERY:
+    case ITEM_TYPE_PP_RECOVERY:
+    case ITEM_TYPE_X_ITEM:
+        return TRUE;
+    default:
+        return FALSE;
+    }
+}
+
+static inline bool32 IsRKStyleItemRules(void)
+{
+    return gSaveBlock3Ptr->challengeSettings.tx_Nuzlocke_RKStyle;
+}
+
+// TRUE if this given/found item has to be randomized: the item randomizer is on,
+// or (RKstyle) it is a healing item.
+static bool32 ShouldRandomizeObtainedItem(u16 itemId)
+{
+    return RandomizerFeatureEnabled(RANDOMIZE_FIELD_ITEMS) || (IsRKStyleItemRules() && IsRKHealingItem(itemId));
+}
+
+bool32 RKStyle_IsHealingItem(u16 itemId)
+{
+    return IsRKHealingItem(itemId);
+}
+
 u16 RandomizeFoundItem(u16 itemId, u8 mapNum, u8 mapGroup, u8 localId)
 {
     struct Sfc32State state;
@@ -495,7 +531,7 @@ u16 RandomizeFoundItem(u16 itemId, u8 mapNum, u8 mapGroup, u8 localId)
 
     do {
         result = sRandomizerItemWhitelist[RandomizerNextRange(&state, ITEM_WHITELIST_SIZE)];
-    } while(!ShouldRandomizeItem(result) || IsItemTMHM(result));
+    } while(!ShouldRandomizeItem(result) || IsItemTMHM(result) || (IsRKStyleItemRules() && IsRKHealingItem(result)));
 
     return result;
 
@@ -503,7 +539,7 @@ u16 RandomizeFoundItem(u16 itemId, u8 mapNum, u8 mapGroup, u8 localId)
 
 static inline void RandomizeFoundItemScript(u16 *scriptVar)
 {
-    if (RandomizerFeatureEnabled(RANDOMIZE_FIELD_ITEMS))
+    if (ShouldRandomizeObtainedItem(*scriptVar))
     {
         u8 objEvent = gSelectedObjectEvent;
         *scriptVar = RandomizeFoundItem(
@@ -528,7 +564,7 @@ void FindHiddenItemRandomize_NativeCall(struct ScriptContext *ctx)
 // object event of their own, so seed off the current map plus the NPC being talked to.
 void ObtainItemRandomize_NativeCall(struct ScriptContext *ctx)
 {
-    if (RandomizerFeatureEnabled(RANDOMIZE_FIELD_ITEMS))
+    if (ShouldRandomizeObtainedItem(gSpecialVar_0x8000))
     {
         gSpecialVar_0x8000 = RandomizeFoundItem(
             gSpecialVar_0x8000,
@@ -551,7 +587,7 @@ void RKStyle_RandomItem_NativeCall(struct ScriptContext *ctx)
 
     do {
         result = sRandomizerItemWhitelist[Random() % ITEM_WHITELIST_SIZE];
-    } while (!ShouldRandomizeItem(result) || IsItemTMHM(result));
+    } while (!ShouldRandomizeItem(result) || IsItemTMHM(result) || IsRKHealingItem(result));
 
     gSpecialVar_0x8002 = result;
 }
