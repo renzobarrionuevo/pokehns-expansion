@@ -307,3 +307,25 @@ TEST("RKSIM healing items")
     EXPECT_EQ(bad, 0);
 }
 
+
+// RK level evolutions: Nidorina and Nidorino evolve at 36, not before.
+TEST("RKSIM evo nidos")
+{
+    u32 lv;
+    struct Pokemon mon;
+    bool32 canStop;
+    static const u16 species[] = {SPECIES_NIDORINA, SPECIES_NIDORINO, SPECIES_GIMMIGHOUL_CHEST, SPECIES_PICHU};
+
+    SetRKSimSettings(RKSIM_SEED_1);
+    for (u32 i = 0; i < ARRAY_COUNT(species); i++)
+    {
+        u32 firstLevel = 0;
+        for (lv = 2; lv <= 60 && firstLevel == 0; lv++)
+        {
+            CreateMon(&mon, species[i], lv, 0, OTID_STRUCT_PLAYER_ID);
+            if (GetEvolutionTargetSpecies(&mon, EVO_MODE_NORMAL, ITEM_NONE, NULL, &canStop, CHECK_EVO) != SPECIES_NONE)
+                firstLevel = lv;
+        }
+        Test_MgbaPrintf("RKSIM|EVO|%S|%d", GetSpeciesName(species[i]), firstLevel);
+    }
+}

@@ -7146,17 +7146,22 @@ static u32 GetRKStyleEvolutionLevel(u32 species)
         return 45;
     case SPECIES_RHYDON:
         return 50;
+    case SPECIES_GIMMIGHOUL_CHEST:   // can't breed, but it is not a baby Pokemon
+    case SPECIES_GIMMIGHOUL_ROAMING:
+        return 30;
     }
 
-    // General rule for every other species (all nine generations)
+    // General rule for every other species (all nine generations).
+    // Evolved Pokemon are checked first: some of them can't breed either (Nidorina),
+    // so the egg group alone doesn't make a Pokemon a baby.
+    if (IsSpeciesAlreadyEvolved(species))
+        return 36; // second-stage Pokemon
     if (gSpeciesInfo[species].eggGroups[0] == EGG_GROUP_NO_EGGS_DISCOVERED
      && !gSpeciesInfo[species].isRestrictedLegendary
      && !gSpeciesInfo[species].isSubLegendary
      && !gSpeciesInfo[species].isMythical
      && !gSpeciesInfo[species].isUltraBeast)
         return 15; // baby Pokemon
-    if (IsSpeciesAlreadyEvolved(species))
-        return 36; // second-stage Pokemon
     return 30;
 }
 

@@ -729,6 +729,12 @@ Toda la pagina queda en los valores normales del juego.
       Nivel 42 ... Ursaring
       Nivel 45 ... Piloswine, Dusclops
       Nivel 50 ... Rhydon
+      Nivel 30 ... Gimmighoul (no puede criar, pero no es un bebe)
+
+    Nidorina y Nidorino evolucionan al 36, como cualquier Pokemon que
+    ya es una evolucion. (Hasta la version del 27/11 Nidorina evolucionaba
+    al 15 por error: el juego la confundia con un bebe porque, igual que
+    los bebes, no puede criar.)
 
     Cambio respecto de la version 1.x: los Pokemon que evolucionan por
     intercambio (Kadabra, Machoke, Graveler, Haunter) ahora tambien
